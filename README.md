@@ -35,8 +35,11 @@ Flags, options and parameters:
 ## ⚡️ Examples
 
 ```bash
-> ytaudio .
-# start PhpStorm with current folder as project
+> ytaudio [url]
+> ytaudio -o [folder] loop
+# copy/paste a URl to start the download (in sequence)
+> ytaudio parallel
+# copy/paste URls to start the download (in parallel)
 ```
 
 ## 🚀 Installation
