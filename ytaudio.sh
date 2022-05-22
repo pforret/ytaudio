@@ -69,13 +69,23 @@ Script:main() {
   Os:require "awk"
   Os:require youtube-dl
 
+    # shellcheck disable=SC2154
+  local yt_options=(--no-part
+    --restrict-filenames
+    --cache-dir "$tmp_dir"
+    --audio-format "$format"
+    --audio-quality "$quality"
+    --no-progress
+    --console-title
+    -x
+    -o "$outdir/%(title)s.%(duration)ss.%(ext)s" )
+
   action=$(Str:lower "$action")
   case $action in
   get)
     #TIP: use «$script_prefix get» to ...
     #TIP:> $script_prefix get
-    # shellcheck disable=SC2154
-    youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$input"
+    youtube-dl "${yt_options[@]}" "$input"
     ;;
 
   loop)
@@ -85,8 +95,7 @@ Script:main() {
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
     while read -r url ; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-    # shellcheck disable=SC2154
-      youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url"
+      youtube-dl "${yt_options[@]}" "$url"
     done
     ;;
 
@@ -100,8 +109,7 @@ Script:main() {
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
      IO:success "Downloading $url"
      (
-    # shellcheck disable=SC2154
-        youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url" 2>&1 \
+        youtube-dl "${yt_options[@]}" "$url" 2>&1 \
         | grep "$format"
       ) &
     done
