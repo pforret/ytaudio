@@ -51,8 +51,11 @@ flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
 option|l|log_dir|folder for log files |$HOME/log/$script_prefix
 option|t|tmp_dir|folder for temp files|/tmp/$script_prefix
-choice|1|action|action to perform|action1,action2,check,env,update
-#param|?|input|input file/text
+option|o|outdir|output folder|.
+option|f|format|output audio format|mp3
+option|y|quality|audio quality|1
+choice|1|action|action to perform|get,loop,parallel,check,env,update
+param|?|input|input URL
 " grep -v -e '^#' -e '^\s*$'
 }
 
@@ -64,19 +67,41 @@ Script:main() {
   IO:log "[$script_basename] $script_version started"
 
   Os:require "awk"
+  Os:require youtube-dl
 
   action=$(Str:lower "$action")
   case $action in
-  action1)
-    #TIP: use «$script_prefix action1» to ...
-    #TIP:> $script_prefix action1
-    do_action1
+  get)
+    #TIP: use «$script_prefix get» to ...
+    #TIP:> $script_prefix get
+    youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$input"
     ;;
 
-  action2)
-    #TIP: use «$script_prefix action2» to ...
-    #TIP:> $script_prefix action2
-    do_action2
+  loop)
+    #TIP: use «$script_prefix loop» to ...
+    #TIP:> $script_prefix loop
+    local url
+    IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
+    while read -r url ; do
+      [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
+      youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url"
+    done
+    ;;
+
+  parallel)
+    #TIP: use «$script_prefix parallel» to ...
+    #TIP:> $script_prefix loop
+    local url
+    IO:print "Copy/paste a URL and press <return> to start the download (in background)"
+    IO:progress " "
+    while read -r url ; do
+      [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
+     IO:success "Downloading $url"
+     (
+        youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url" 2>&1 \
+        | grep "$format"
+      ) &
+    done
     ;;
 
   check | env)
@@ -108,8 +133,8 @@ Script:main() {
 ## Put your helper scripts here
 #####################################################################
 
-do_action1() {
-  IO:log "action1"
+do_get() {
+  IO:log "get"
   # Examples of required binaries/scripts and how to install them
   # Os:require "ffmpeg"
   # Os:require "convert" "imagemagick"
@@ -117,8 +142,8 @@ do_action1() {
   # (code)
 }
 
-do_action2() {
-  IO:log "action2"
+do_loop() {
+  IO:log "loop"
   # (code)
 
 }
