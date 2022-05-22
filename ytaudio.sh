@@ -74,6 +74,7 @@ Script:main() {
   get)
     #TIP: use «$script_prefix get» to ...
     #TIP:> $script_prefix get
+    # shellcheck disable=SC2154
     youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$input"
     ;;
 
@@ -84,6 +85,7 @@ Script:main() {
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
     while read -r url ; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
+    # shellcheck disable=SC2154
       youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url"
     done
     ;;
@@ -98,6 +100,7 @@ Script:main() {
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
      IO:success "Downloading $url"
      (
+    # shellcheck disable=SC2154
         youtube-dl -x -o "$outdir/%(title)s.%(duration)ss.%(ext)s" --audio-format "$format" --audio-quality "$quality" "$url" 2>&1 \
         | grep "$format"
       ) &
@@ -133,20 +136,6 @@ Script:main() {
 ## Put your helper scripts here
 #####################################################################
 
-do_get() {
-  IO:log "get"
-  # Examples of required binaries/scripts and how to install them
-  # Os:require "ffmpeg"
-  # Os:require "convert" "imagemagick"
-  # Os:require "IO:progressbar" "basher install pforret/IO:progressbar"
-  # (code)
-}
-
-do_loop() {
-  IO:log "loop"
-  # (code)
-
-}
 
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
@@ -229,15 +218,15 @@ function IO:die() {
 }
 
 function IO:alert() {
-  IO:print "${txtWarn}${char_alert}${txtReset}: $*" >&2
+  IO:print "${txtWarn}${char_alert}${txtReset}: ${txtUnderline}$*${txtReset}" >&2
   }
 
 function IO:success() {
-  IO:print "${txtInfo}${char_succes}${txtReset}  $*"
+  IO:print "${txtInfo}${char_succes}${txtReset}  ${txtBold}$*${txtReset}"
 }
 
 function IO:announce() {
-  IO:print "${txtInfo}${char_wait}${txtReset}  $*"
+  IO:print "${txtInfo}${char_wait}${txtReset}  ${txtItalic}$*${txtReset}"
   sleep 1
 }
 
@@ -963,7 +952,6 @@ function Script:meta() {
 }
 
 function Script:initialize() {
-  tmp_file=""
   log_file=""
   if [[ -n "${tmp_dir:-}" ]]; then
     # clean up TMP folder after 1 day
