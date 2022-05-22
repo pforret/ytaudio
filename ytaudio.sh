@@ -208,7 +208,8 @@ function IO:print() {
   }
 
 function IO:debug() {
-  ((verbose)) && IO:print "${txtInfo}# $* ${txtReset}" >&2 || true
+  ((verbose)) && IO:print "${txtInfo}# $* ${txtReset}" >&2
+  true
   }
 
 function IO:die() {
