@@ -13,7 +13,7 @@ Get audio from YT
 
 ## 🔥 Usage
 
-```bash
+```
 Program : ytaudio  by peter@forret.com
 Version : v0.1.0 (May 22 09:30:13 2022)
 Purpose : Get audio from YT
