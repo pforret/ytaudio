@@ -43,7 +43,7 @@ function Option:config() {
   ### choice:  is like a param, but when there are limited options
   ###     choice|<type>|<long>|<description>|choice1,choice2,...
   ###     <type> = 1 for single parameters - e.g. param|1|output expects 1 parameter <output>
-<<< "
+  grep <<<"
 #commented lines will be filtered
 flag|h|help|show usage
 flag|q|quiet|no output
@@ -51,12 +51,14 @@ flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
 option|l|log_dir|folder for log files |$HOME/log/$script_prefix
 option|t|tmp_dir|folder for temp files|/tmp/$script_prefix
-option|o|outdir|output folder|.
-option|f|format|output audio format|mp3
-option|y|quality|audio quality|1
+option|D|DOWNLOADER|download binary|yt-dlp
+option|F|FORMAT|output audio format|wav
+option|O|OUT_DIR|output folder|.
+option|Q|QUALITY|audio quality|1
+option|S|SPLITTER|split binary|spleeter
 choice|1|action|action to perform|get,loop,parallel,check,env,update
 param|?|input|input URL
-" grep -v -e '^#' -e '^\s*$'
+" -v -e '^#' -e '^\s*$'
 }
 
 #####################################################################
@@ -67,35 +69,37 @@ Script:main() {
   IO:log "[$script_basename] $script_version started"
 
   Os:require "awk"
-  Os:require youtube-dl
+  Os:require "$DOWNLOADER"
 
-    # shellcheck disable=SC2154
+  # shellcheck disable=SC2154
   local yt_options=(--no-part
     --restrict-filenames
     --cache-dir "$tmp_dir"
-    --audio-format "$format"
-    --audio-quality "$quality"
+    --audio-format "$FORMAT"
+    --audio-quality "$QUALITY"
     --no-progress
     --console-title
     -x
-    -o "$outdir/%(title)s.%(duration)ss.%(ext)s" )
+    -o "$OUT_DIR/%(title)s.%(duration)ss.%(ext)s")
 
   action=$(Str:lower "$action")
   case $action in
   get)
-    #TIP: use «$script_prefix get» to ...
+    #TIP: use «$script_prefix get» to download 1 URL
     #TIP:> $script_prefix get
-    youtube-dl "${yt_options[@]}" "$input"
+    # shellcheck disable=SC2154
+    IO:debug "${yt_options[@]}"
+    "$DOWNLOADER" "${yt_options[@]}" "$input" 2>&1 | just_keep_output
     ;;
 
   loop)
-    #TIP: use «$script_prefix loop» to ...
+    #TIP: use «$script_prefix loop» to keep downloading
     #TIP:> $script_prefix loop
     local url
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
-    while read -r url ; do
+    while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-      youtube-dl "${yt_options[@]}" "$url"
+      "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 | just_keep_output
     done
     ;;
 
@@ -105,12 +109,12 @@ Script:main() {
     local url
     IO:print "Copy/paste a URL and press <return> to start the download (in background)"
     IO:progress " "
-    while read -r url ; do
+    while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-     IO:success "Downloading $url"
-     (
-        youtube-dl "${yt_options[@]}" "$url" 2>&1 \
-        | grep "$format"
+      IO:success "Downloading $url"
+      (
+        "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 \
+         | just_keep_output
       ) &
     done
     ;;
@@ -145,6 +149,13 @@ Script:main() {
 #####################################################################
 
 
+function just_keep_output(){
+  #TIP: use «just_keep_output» to ...
+  #TIP:> just_keep_output
+  grep "Destination:" \
+  | tail -1 \
+  | cut -f3- -d' '
+}
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
 #####################################################################
@@ -213,12 +224,12 @@ function IO:initialize() {
 
 function IO:print() {
   ((quiet)) && true || printf '%b\n' "$*"
-  }
+}
 
 function IO:debug() {
   ((verbose)) && IO:print "${txtInfo}# $* ${txtReset}" >&2
   true
-  }
+}
 
 function IO:die() {
   IO:print "${txtError}${char_fail} $script_basename${txtReset}: $*" >&2
@@ -228,7 +239,7 @@ function IO:die() {
 
 function IO:alert() {
   IO:print "${txtWarn}${char_alert}${txtReset}: ${txtUnderline}$*${txtReset}" >&2
-  }
+}
 
 function IO:success() {
   IO:print "${txtInfo}${char_succes}${txtReset}  ${txtBold}$*${txtReset}"
@@ -270,19 +281,19 @@ function IO:question() {
 }
 
 function IO:log() {
-  [[ -n "${log_file:-}" ]] && echo "$(date '+%H:%M:%S') | $*" >> "$log_file"
-  }
+  [[ -n "${log_file:-}" ]] && echo "$(date '+%H:%M:%S') | $*" >>"$log_file"
+}
 
 function Tool:calc() {
   awk "BEGIN {print $*} ; "
-  }
+}
 
 function Tool:time() {
   if [[ $(command -v perl) ]]; then
     perl -MTime::HiRes=time -e 'printf "%.3f\n", time'
   elif [[ $(command -v php) ]]; then
     php -r 'echo microtime(true) . "\n"; '
-  elif [[ $(command -v python) ]] ; then
+  elif [[ $(command -v python) ]]; then
     python -c "import time; print(time.time()) "
   else
     date "+%s" | awk '{printf("%.3f\n",$1)}'
@@ -292,37 +303,37 @@ function Tool:time() {
 ### string processing
 
 function Str:trim() {
-    local var="$*"
-    # remove leading whitespace characters
-    var="${var#"${var%%[![:space:]]*}"}"
-    # remove trailing whitespace characters
-    var="${var%"${var##*[![:space:]]}"}"
-    printf '%s' "$var"
+  local var="$*"
+  # remove leading whitespace characters
+  var="${var#"${var%%[![:space:]]*}"}"
+  # remove trailing whitespace characters
+  var="${var%"${var##*[![:space:]]}"}"
+  printf '%s' "$var"
 }
 
 function Str:lower() {
-  if [[ -n "$1" ]] ; then
+  if [[ -n "$1" ]]; then
     local input="$*"
     echo "${input,,}"
   else
     awk '{print tolower($0)}'
   fi
-  }
+}
 
 function Str:upper() {
-  if [[ -n "$1" ]] ; then
+  if [[ -n "$1" ]]; then
     local input="$*"
     echo "${input^^}"
   else
     awk '{print toupper($0)}'
   fi
-  }
+}
 
 function Str:ascii() {
   # remove all characters with accents/diacritics to latin alphabet
   # shellcheck disable=SC2020
   sed 'y/àáâäæãåāǎçćčèéêëēėęěîïííīįìǐłñńôöòóœøōǒõßśšûüǔùǖǘǚǜúūÿžźżÀÁÂÄÆÃÅĀǍÇĆČÈÉÊËĒĖĘĚÎÏÍÍĪĮÌǏŁÑŃÔÖÒÓŒØŌǑÕẞŚŠÛÜǓÙǕǗǙǛÚŪŸŽŹŻ/aaaaaaaaaccceeeeeeeeiiiiiiiilnnooooooooosssuuuuuuuuuuyzzzAAAAAAAAACCCEEEEEEEEIIIIIIIILNNOOOOOOOOOSSSUUUUUUUUUUYZZZ/'
-  }
+}
 
 function Str:slugify() {
   # Str:slugify <input> <separator>
@@ -330,7 +341,7 @@ function Str:slugify() {
   # Str:slugify "Jack, Jill & Clémence LTD" "_"  => jack_jill_clemence_ltd
   separator="${2:-}"
   [[ -z "$separator" ]] && separator="-"
-    Str:lower "$1" |
+  Str:lower "$1" |
     Str:ascii |
     awk '{
           gsub(/[\[\]@#$%^&*;,.:()<>!?\/+=_]/," ",$0);
@@ -373,7 +384,6 @@ function Str:digest() {
   fi
 }
 
-
 trap "IO:die \"ERROR \$? after \$SECONDS seconds \n\
 \${error_prefix} last command : '\$BASH_COMMAND' \" \
 \$(< \$script_install_path awk -v lineno=\$LINENO \
@@ -381,7 +391,7 @@ trap "IO:die \"ERROR \$? after \$SECONDS seconds \n\
 # cf https://askubuntu.com/questions/513932/what-is-the-bash-command-variable-good-for
 
 Script:exit() {
-  for temp_file in "${temp_files[@]}" ; do
+  for temp_file in "${temp_files[@]}"; do
     [[ -f "$temp_file" ]] && (
       IO:debug "Delete temp file [$temp_file]"
       rm -f "$temp_file"
@@ -522,7 +532,7 @@ Option:usage() {
   IO:print "Program : ${txtInfo}$script_basename${txtReset}  by ${txtWarn}$script_author${txtReset}"
   IO:print "Version : ${txtInfo}v$script_version${txtReset} (${txtWarn}$script_modified${txtReset})"
   IO:print "Purpose : ${txtInfo}Get audio from YT${txtReset}"
-  echo -n  "Usage   : $script_basename"
+  echo -n "Usage   : $script_basename"
   Option:config |
     awk '
   BEGIN { FS="|"; OFS=" "; oneline="" ; fulltext="Flags, options and parameters:"}
@@ -664,29 +674,29 @@ function Option:parse() {
 
   ) && Script:exit
 
-    local option_list
-    local option_count
-    local choices
-    local single_params
+  local option_list
+  local option_count
+  local choices
+  local single_params
   ## then run through the given parameters
   if Option:has_choice; then
     choices=$(Option:config | awk -F"|" '
       $1 == "choice" && $2 == 1 {print $3}
       ')
-    option_list=$(<<< "$choices" xargs)
-    option_count=$(<<< "$choices" wc -w | xargs)
+    option_list=$(xargs <<<"$choices")
+    option_count=$(wc <<<"$choices" -w | xargs)
     IO:debug "$config_icon Expect : $option_count choice(s): $option_list"
     [[ $# -eq 0 ]] && IO:die "need the choice(s) [$option_list]"
 
-  local choices_list
-  local valid_choice
+    local choices_list
+    local valid_choice
     for param in $choices; do
       [[ $# -eq 0 ]] && IO:die "need choice [$param]"
-      [[ -z "$1" ]]  && IO:die "need choice [$param]"
+      [[ -z "$1" ]] && IO:die "need choice [$param]"
       IO:debug "$config_icon Assign : $param=$1"
       # check if choice is in list
-      choices_list=$(Option:config | awk -F"|" -v choice="$param"  '$1 == "choice" && $3 = choice {print $5}')
-      valid_choice=$(<<< "$choices_list" tr "," "\n" | grep "$1")
+      choices_list=$(Option:config | awk -F"|" -v choice="$param" '$1 == "choice" && $3 = choice {print $5}')
+      valid_choice=$(tr <<<"$choices_list" "," "\n" | grep "$1")
       [[ -z "$valid_choice" ]] && IO:die "choice [$1] is not valid, should be in list [$choices_list]"
 
       eval "$param=\"$1\""
@@ -702,8 +712,8 @@ function Option:parse() {
     single_params=$(Option:config | awk -F"|" '
       $1 == "param" && $2 == 1 {print $3}
       ')
-    option_list=$(<<< "$single_params" xargs)
-    option_count=$(<<< "$single_params" wc -w | xargs)
+    option_list=$(xargs <<<"$single_params")
+    option_count=$(wc <<<"$single_params" -w | xargs)
     IO:debug "$config_icon Expect : $option_count single parameter(s): $option_list"
     [[ $# -eq 0 ]] && IO:die "need the parameter(s) [$option_list]"
 
@@ -724,7 +734,7 @@ function Option:parse() {
     local optional_params
     local optional_count
     optional_params=$(Option:config | grep 'param|?|' | cut -d'|' -f3)
-    optional_count=$(<<< "$optional_params" wc -w | xargs)
+    optional_count=$(wc <<<"$optional_params" -w | xargs)
     IO:debug "$config_icon Expect : $optional_count optional parameter(s): $(echo "$optional_params" | xargs)"
 
     for param in $optional_params; do
@@ -824,38 +834,37 @@ function Os:follow_link() {
   Os:follow_link "$link_folder/$link_name"
 }
 
-function Os:notify(){
+function Os:notify() {
   # cf https://levelup.gitconnected.com/5-modern-bash-scripting-techniques-that-only-a-few-programmers-know-4abb58ddadad
   local message="$1"
   local source="${2:-$script_basename}"
 
-  [[ -n $(command -v notify-send) ]] && notify-send "$source" "$message" # for Linux
+  [[ -n $(command -v notify-send) ]] && notify-send "$source" "$message"                                      # for Linux
   [[ -n $(command -v osascript) ]] && osascript -e "display notification \"$message\" with title \"$source\"" # for MacOS
 }
 
-function Os:busy(){
+function Os:busy() {
   # show spinner as long as process $pid is running
-    local pid="$1"
-    local message="${2:-}"
-    local frames=( "|" "/" "-" "\\" )
-    (
-      while kill -0 "$pid" &> /dev/null;
-      do
-          for frame in "${frames[@]}";
-          do
-              printf "\r[ $frame ] %s..." "$message"
-              sleep 0.5
-          done
+  local pid="$1"
+  local message="${2:-}"
+  local frames=("|" "/" "-" "\\")
+  (
+    while kill -0 "$pid" &>/dev/null; do
+      for frame in "${frames[@]}"; do
+        printf "\r[ $frame ] %s..." "$message"
+        sleep 0.5
       done
-      printf "\n"
-    )
+    done
+    printf "\n"
+  )
 }
 
-function Os:beep(){
+function Os:beep() {
   local type="${1=-info}"
   case $type in
   *)
     tput bel
+    ;;
   esac
 }
 
@@ -917,17 +926,17 @@ function Script:meta() {
       # Synology, QNAP,
       os_name="Linux"
     fi
-    [[ -x /bin/apt-cyg ]]    && install_package="apt-cyg install"     # Cygwin
-    [[ -x /bin/dpkg ]]       && install_package="dpkg -i"             # Synology
-    [[ -x /opt/bin/ipkg ]]   && install_package="ipkg install"        # Synology
-    [[ -x /usr/sbin/pkg ]]   && install_package="pkg install"         # BSD
-    [[ -x /usr/bin/pacman ]] && install_package="pacman -S"           # Arch Linux
-    [[ -x /usr/bin/zypper ]] && install_package="zypper install"      # Suse Linux
-    [[ -x /usr/bin/emerge ]] && install_package="emerge"              # Gentoo
-    [[ -x /usr/bin/yum ]]    && install_package="yum install"         # RedHat RHEL/CentOS/Fedora
-    [[ -x /usr/bin/apk ]]    && install_package="apk add"             # Alpine
-    [[ -x /usr/bin/apt-get ]] && install_package="apt-get install"    # Debian
-    [[ -x /usr/bin/apt ]]    && install_package="apt install"         # Ubuntu
+    [[ -x /bin/apt-cyg ]] && install_package="apt-cyg install"     # Cygwin
+    [[ -x /bin/dpkg ]] && install_package="dpkg -i"                # Synology
+    [[ -x /opt/bin/ipkg ]] && install_package="ipkg install"       # Synology
+    [[ -x /usr/sbin/pkg ]] && install_package="pkg install"        # BSD
+    [[ -x /usr/bin/pacman ]] && install_package="pacman -S"        # Arch Linux
+    [[ -x /usr/bin/zypper ]] && install_package="zypper install"   # Suse Linux
+    [[ -x /usr/bin/emerge ]] && install_package="emerge"           # Gentoo
+    [[ -x /usr/bin/yum ]] && install_package="yum install"         # RedHat RHEL/CentOS/Fedora
+    [[ -x /usr/bin/apk ]] && install_package="apk add"             # Alpine
+    [[ -x /usr/bin/apt-get ]] && install_package="apt-get install" # Debian
+    [[ -x /usr/bin/apt ]] && install_package="apt install"         # Ubuntu
     ;;
 
   esac
@@ -973,7 +982,7 @@ function Script:initialize() {
   fi
 }
 
-function Os:tempfile(){
+function Os:tempfile() {
   local extension=${1:-txt}
   local file="${tmp_dir:-/tmp}/$execution_day.$RANDOM.$extension"
   IO:debug "$config_icon tmp_file: $file"
@@ -990,7 +999,7 @@ function Os:import_env() {
     "./.env"
     "./.$script_prefix.env"
     "./$script_prefix.env"
-    )
+  )
 
   for env_file in "${env_files[@]}"; do
     if [[ -f "$env_file" ]]; then
@@ -1029,20 +1038,20 @@ function Os:clean_env() {
   echo "$output"
 }
 
-IO:initialize  # output settings
-Script:meta # find installation folder
+IO:initialize # output settings
+Script:meta   # find installation folder
 
-[[ $run_as_root == 1 ]]  && [[ $UID -ne 0 ]] && IO:die "user is $USER, MUST be root to run [$script_basename]"
+[[ $run_as_root == 1 ]] && [[ $UID -ne 0 ]] && IO:die "user is $USER, MUST be root to run [$script_basename]"
 [[ $run_as_root == -1 ]] && [[ $UID -eq 0 ]] && IO:die "user is $USER, CANNOT be root to run [$script_basename]"
 
-Option:initialize      # set default values for flags & options
-Os:import_env # overwrite with .env if any
+Option:initialize # set default values for flags & options
+Os:import_env     # overwrite with .env if any
 
 if [[ $sourced -eq 0 ]]; then
-  Option:parse "$@"       # overwrite with specified options if any
-  Script:initialize       # clean up folders
-  Script:main             # run Script:main program
-  Script:exit             # exit and clean up
+  Option:parse "$@" # overwrite with specified options if any
+  Script:initialize # clean up folders
+  Script:main       # run Script:main program
+  Script:exit       # exit and clean up
 else
   # just disable the trap, don't execute Script:main
   trap - INT TERM EXIT
