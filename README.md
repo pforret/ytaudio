@@ -15,9 +15,9 @@ Get audio from YT
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v0.1.0 (May 22 09:30:13 2022)
+Version : v1.0.0 (Aug  2 23:09:07 2023)
 Purpose : Get audio from YT
-Usage   : ytaudio [-h] [-q] [-v] [-f] [-l <log_dir>] [-t <tmp_dir>] [-o <outdir>] [-f <format>] [-y <quality>] <action> <input?>
+Usage   : ytaudio [-h] [-q] [-v] [-f] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
     -h|--help        : [flag] show usage [default: off]
     -q|--quiet       : [flag] no output [default: off]
@@ -25,9 +25,11 @@ Flags, options and parameters:
     -f|--force       : [flag] do not ask for confirmation (always yes) [default: off]
     -l|--log_dir <?> : [option] folder for log files   [default: /Users/pforret/log/ytaudio]
     -t|--tmp_dir <?> : [option] folder for temp files  [default: /tmp/ytaudio]
-    -o|--outdir <?>  : [option] output folder  [default: .]
-    -f|--format <?>  : [option] output audio format  [default: mp3]
-    -y|--quality <?> : [option] audio quality  [default: 1]
+    -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
+    -F|--FORMAT <?>  : [option] output audio format  [default: wav]
+    -O|--OUT_DIR <?> : [option] output folder  [default: .]
+    -Q|--QUALITY <?> : [option] audio quality  [default: 1]
+    -S|--SPLITTER <?>: [option] split binary  [default: spleeter]
     <action>         : [choice] action to perform  [options: get,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
 ```
