@@ -15,7 +15,7 @@ Get audio from YT
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.0.0 (Aug  2 23:09:07 2023)
+Version : v1.1.0 (Aug  3 14:06:00 2023)
 Purpose : Get audio from YT
 Usage   : ytaudio [-h] [-q] [-v] [-f] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
@@ -29,7 +29,7 @@ Flags, options and parameters:
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
     -Q|--QUALITY <?> : [option] audio quality  [default: 1]
-    -S|--SPLITTER <?>: [option] split binary  [default: spleeter]
+    -S|--SPLITTER <?>: [option] stem splitting (full/voice)
     <action>         : [choice] action to perform  [options: get,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
 ```
@@ -37,7 +37,7 @@ Flags, options and parameters:
 ## ⚡️ Examples
 
 ```bash
-# downlad 1 URL
+# download 1 URL
 % ytaudio get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
 ./Tears For Fears - Everybody Wants To Rule The World.251s.mp3
 
