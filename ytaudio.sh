@@ -55,7 +55,7 @@ option|D|DOWNLOADER|download binary|yt-dlp
 option|F|FORMAT|output audio format|wav
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
-option|S|SPLITTER|split binary|spleeter
+option|S|SPLITTER|stem splitting (full/voice)|
 choice|1|action|action to perform|get,loop,parallel,check,env,update
 param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
@@ -88,8 +88,7 @@ Script:main() {
     #TIP: use «$script_prefix get» to download 1 URL
     #TIP:> $script_prefix get
     # shellcheck disable=SC2154
-    IO:debug "${yt_options[@]}"
-    "$DOWNLOADER" "${yt_options[@]}" "$input" 2>&1 | just_keep_output
+    download_to_file "$input"
     ;;
 
   loop)
@@ -99,7 +98,7 @@ Script:main() {
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
     while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-      "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 | just_keep_output
+    download_to_file "$url"
     done
     ;;
 
@@ -112,10 +111,7 @@ Script:main() {
     while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
       IO:success "Downloading $url"
-      (
-        "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 \
-         | just_keep_output
-      ) &
+      download_to_file "$url"
     done
     ;;
 
@@ -148,14 +144,49 @@ Script:main() {
 ## Put your helper scripts here
 #####################################################################
 
+function download_to_file(){
+  local url="$1"
+  local output_download
+  local output_root
 
-function just_keep_output(){
-  #TIP: use «just_keep_output» to ...
-  #TIP:> just_keep_output
-  grep "Destination:" \
+  # shellcheck disable=SC2154
+  output_download=$( "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 \
+  | grep "Destination:" \
   | tail -1 \
-  | cut -f3- -d' '
+  | cut -f3- -d' ' )
+
+  [[ -z "$output_download" ]] && IO:die "No output file"
+  [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
+  IO:success "$output_download"
+  output_root=$(basename "$output_download" ".$FORMAT")
+  if [[ -n "$SPLITTER" ]] ; then
+    Os:require demucs "python3 -m pip install -U demucs"
+    case "$SPLITTER" in
+      # demucs --help
+      #usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT] [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS] [--overlap OVERLAP] [--no-split | --segment SEGMENT] [--two-stems STEM] [--int24 | --float32] [--clip-mode {rescale,clamp}] [--mp3] [--mp3-bitrate MP3_BITRATE] [-j JOBS]
+      #                       tracks [tracks ...]
+      #
+
+    full)
+      demucs -o "$OUT_DIR" "$output_download"
+      find "$OUT_DIR" -name "*.wav" | grep "$output_root"
+      ;;
+
+    voice)
+      demucs -o "$OUT_DIR" --two-stems voice "$output_download"
+      find "$OUT_DIR" -name "*.wav" | grep "$output_root"
+    ;;
+
+    *)
+      IO:die "Splitter [$SPLITTER] not supported"
+      ;;
+    esac
+
+  fi
+
+
 }
+
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
 #####################################################################
