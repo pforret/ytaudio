@@ -148,8 +148,8 @@ function download_to_file() {
   local url="$1"
   local output_download
   local output_root
-  local uniq
-  uniq=$(echo "$url" | Str:digest 6)
+  # local uniq
+  # uniq=$(echo "$url" | Str:digest 6)
   # shellcheck disable=SC2154
   # local log_file="$log_dir/file.$uniq.log"
 
