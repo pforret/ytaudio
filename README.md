@@ -34,6 +34,19 @@ Flags, options and parameters:
     <input>          : [parameter] input URL (optional)
 ```
 
+## Installation
+
+This script needs the following programs on your system:
+* file downloader [github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp)
+* stem splitter [github.com/facebookresearch/demucs](https://github.com/facebookresearch/demucs)
+
+```shell
+python3 -m pip install -U yt-dlp
+# or on macOS: 'brew install yt-dlp'
+
+python3 -m pip install -U demucs
+```
+
 ## ⚡️ Examples
 
 ```bash
