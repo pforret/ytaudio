@@ -49,8 +49,8 @@ flag|h|help|show usage
 flag|q|quiet|no output
 flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
-option|l|log_dir|folder for log files |$HOME/log/$script_prefix
-option|t|tmp_dir|folder for temp files|/tmp/$script_prefix
+option|l|log_dir|folder for log files |log
+option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
 option|F|FORMAT|output audio format|wav
 option|O|OUT_DIR|output folder|.
@@ -148,9 +148,14 @@ function download_to_file(){
   local url="$1"
   local output_download
   local output_root
-
+  local uniq
+  uniq=$(echo "$url" | Str:digest 6)
   # shellcheck disable=SC2154
-  output_download=$( "$DOWNLOADER" "${yt_options[@]}" "$url" 2>&1 \
+  local log_file="$log_dir/file.$uniq.log"
+
+  IO:progress "Downloading"
+  # shellcheck disable=SC2154
+  output_download=$( "$DOWNLOADER" "${yt_options[@]}" "$url" 2> "$log_file" \
   | grep "Destination:" \
   | tail -1 \
   | cut -f3- -d' ' )
@@ -161,20 +166,21 @@ function download_to_file(){
   output_root=$(basename "$output_download" ".$FORMAT")
   if [[ -n "$SPLITTER" ]] ; then
     Os:require demucs "python3 -m pip install -U demucs"
-    case "$SPLITTER" in
+    IO:progress "Splitting ${output_root:_: })"
+  case "$SPLITTER" in
       # demucs --help
       #usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT] [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS] [--overlap OVERLAP] [--no-split | --segment SEGMENT] [--two-stems STEM] [--int24 | --float32] [--clip-mode {rescale,clamp}] [--mp3] [--mp3-bitrate MP3_BITRATE] [-j JOBS]
       #                       tracks [tracks ...]
       #
 
     full)
-      demucs -o "$OUT_DIR" "$output_download"
-      find "$OUT_DIR" -name "*.wav" | grep "$output_root"
+      demucs -o "$OUT_DIR" "$output_download" &>> "$log_file"
+      find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
       ;;
 
     voice)
-      demucs -o "$OUT_DIR" --two-stems voice "$output_download"
-      find "$OUT_DIR" -name "*.wav" | grep "$output_root"
+      demucs -o "$OUT_DIR" --two-stems voice "$output_download" &>>  "$log_file"
+      find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
     ;;
 
     *)
@@ -230,6 +236,7 @@ function IO:initialize() {
     txtUnderline=""
   fi
 
+  local unicode
   [[ $(echo -e '\xe2\x82\xac') == '€' ]] && unicode=1 || unicode=0 # detect if unicode is supported
   if [[ $unicode -gt 0 ]]; then
     char_succes="✅"
@@ -422,6 +429,7 @@ trap "IO:die \"ERROR \$? after \$SECONDS seconds \n\
 # cf https://askubuntu.com/questions/513932/what-is-the-bash-command-variable-good-for
 
 Script:exit() {
+  local temp_file
   for temp_file in "${temp_files[@]}"; do
     [[ -f "$temp_file" ]] && (
       IO:debug "Delete temp file [$temp_file]"
@@ -482,7 +490,6 @@ Script:show_tips() {
 }
 
 Script:check() {
-  local name
   if [[ -n $(Option:filter flag) ]]; then
     IO:print "## ${txtInfo}boolean flags${txtReset}:"
     Option:filter flag |
@@ -562,7 +569,7 @@ Script:check() {
 Option:usage() {
   IO:print "Program : ${txtInfo}$script_basename${txtReset}  by ${txtWarn}$script_author${txtReset}"
   IO:print "Version : ${txtInfo}v$script_version${txtReset} (${txtWarn}$script_modified${txtReset})"
-  IO:print "Purpose : ${txtInfo}Get audio from YT${txtReset}"
+  IO:print "Purpose : ${txtInfo}Get audio from YouTube and split stems${txtReset}"
   echo -n "Usage   : $script_basename"
   Option:config |
     awk '
@@ -721,6 +728,7 @@ function Option:parse() {
 
     local choices_list
     local valid_choice
+    local param
     for param in $choices; do
       [[ $# -eq 0 ]] && IO:die "need choice [$param]"
       [[ -z "$1" ]] && IO:die "need choice [$param]"
@@ -1032,6 +1040,7 @@ function Os:import_env() {
     "./$script_prefix.env"
   )
 
+  local env_file
   for env_file in "${env_files[@]}"; do
     if [[ -f "$env_file" ]]; then
       IO:debug "$config_icon Read  dotenv: [$env_file]"
