@@ -14,6 +14,13 @@ root_folder=$(cd .. && pwd) # tests/.. is root folder
 # shellcheck disable=SC2012
 # shellcheck disable=SC2035
 root_script=$(find "$root_folder" -maxdepth 1 -name "*.sh" | head -1) # normally there should be only 1
+if [[ -z "$(command -v python3)" ]] ; then
+  apt install python3
+fi
+if [[ -z "$(command -v yt-dlp)" ]] ; then
+  python3 -m pip install -U yt-dlp
+fi
+
 
 test_download_youtube() {
   # script without parameters should give usage info
