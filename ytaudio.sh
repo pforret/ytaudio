@@ -58,6 +58,7 @@ option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
 choice|1|action|action to perform|get,loop,parallel,check,env,update
 param|?|input|input URL
+param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
 }
 
@@ -569,49 +570,49 @@ Script:check() {
 Option:usage() {
   IO:print "Program : ${txtInfo}$script_basename${txtReset}  by ${txtWarn}$script_author${txtReset}"
   IO:print "Version : ${txtInfo}v$script_version${txtReset} (${txtWarn}$script_modified${txtReset})"
-  IO:print "Purpose : ${txtInfo}Get audio from YouTube and split stems${txtReset}"
+  IO:print "Purpose : ${txtInfo}Download audio (YouTube/Soundcloud/...) and split stems${txtReset}"
   echo -n "Usage   : $script_basename"
   Option:config |
     awk '
-  BEGIN { FS="|"; OFS=" "; oneline="" ; fulltext="Flags, options and parameters:"}
+  BEGIN { FS="|"; OFS=" "; one_line="" ; fulltext="Flags, options and parameters:"}
   $1 ~ /flag/  {
     fulltext = fulltext sprintf("\n    -%1s|--%-12s: [flag] %s [default: off]",$2,$3,$4) ;
-    oneline  = oneline " [-" $2 "]"
+    one_line  = one_line " [-" $2 "]"
     }
   $1 ~ /option/  {
     fulltext = fulltext sprintf("\n    -%1s|--%-12s: [option] %s",$2,$3 " <?>",$4) ;
     if($5!=""){fulltext = fulltext "  [default: " $5 "]"; }
-    oneline  = oneline " [-" $2 " <" $3 ">]"
+    one_line  = one_line " [-" $2 " <" $3 ">]"
     }
   $1 ~ /list/  {
     fulltext = fulltext sprintf("\n    -%1s|--%-12s: [list] %s (array)",$2,$3 " <?>",$4) ;
     fulltext = fulltext "  [default empty]";
-    oneline  = oneline " [-" $2 " <" $3 ">]"
+    one_line  = one_line " [-" $2 " <" $3 ">]"
     }
   $1 ~ /secret/  {
     fulltext = fulltext sprintf("\n    -%1s|--%s <%s>: [secret] %s",$2,$3,"?",$4) ;
-      oneline  = oneline " [-" $2 " <" $3 ">]"
+      one_line  = one_line " [-" $2 " <" $3 ">]"
     }
   $1 ~ /param/ {
     if($2 == "1"){
           fulltext = fulltext sprintf("\n    %-17s: [parameter] %s","<"$3">",$4);
-          oneline  = oneline " <" $3 ">"
+          one_line  = one_line " <" $3 ">"
      }
      if($2 == "?"){
           fulltext = fulltext sprintf("\n    %-17s: [parameter] %s (optional)","<"$3">",$4);
-          oneline  = oneline " <" $3 "?>"
+          one_line  = one_line " <" $3 "?>"
      }
      if($2 == "n"){
           fulltext = fulltext sprintf("\n    %-17s: [parameters] %s (1 or more)","<"$3">",$4);
-          oneline  = oneline " <" $3 " …>"
+          one_line  = one_line " <" $3 " …>"
      }
     }
   $1 ~ /choice/ {
         fulltext = fulltext sprintf("\n    %-17s: [choice] %s","<"$3">",$4);
         if($5!=""){fulltext = fulltext "  [options: " $5 "]"; }
-        oneline  = oneline " <" $3 ">"
+        one_line  = one_line " <" $3 ">"
     }
-    END {print oneline; print fulltext}
+    END {print one_line; print fulltext}
   '
 }
 

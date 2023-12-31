@@ -8,7 +8,7 @@
 
 # ytaudio
 
-![](assets/unsplash.youtube.jpg)
+![](assets/ytaudio.jpg)
 Get audio from YT
 
 ## 🔥 Usage
