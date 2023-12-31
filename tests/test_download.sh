@@ -14,10 +14,10 @@ root_folder=$(cd .. && pwd) # tests/.. is root folder
 # shellcheck disable=SC2012
 # shellcheck disable=SC2035
 root_script=$(find "$root_folder" -maxdepth 1 -name "*.sh" | head -1) # normally there should be only 1
+sudo apt update
 [[ -z "$(command -v python3)" ]] && sudo apt -q install python3
 [[ -z "$(command -v ffmpeg)" ]] && sudo apt -q install ffmpeg
 [[ -z "$(command -v yt-dlp)" ]] && python3 -m pip install -U yt-dlp
-fi
 
 
 test_download_youtube() {
