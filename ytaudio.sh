@@ -151,11 +151,11 @@ function download_to_file() {
   local uniq
   uniq=$(echo "$url" | Str:digest 6)
   # shellcheck disable=SC2154
-  local log_file="$log_dir/file.$uniq.log"
+  # local log_file="$log_dir/file.$uniq.log"
 
   # IO:progress "Downloading"
   # shellcheck disable=SC2154
-  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>"$log_file" |
+  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" |
     grep "Destination:" |
     tail -1 |
     cut -f3- -d' ')
