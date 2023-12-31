@@ -58,7 +58,6 @@ option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
 choice|1|action|action to perform|get,loop,parallel,check,env,update
 param|?|input|input URL
-param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
 }
 
@@ -99,7 +98,7 @@ Script:main() {
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
     while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-    download_to_file "$url"
+      download_to_file "$url"
     done
     ;;
 
@@ -145,7 +144,7 @@ Script:main() {
 ## Put your helper scripts here
 #####################################################################
 
-function download_to_file(){
+function download_to_file() {
   local url="$1"
   local output_download
   local output_root
@@ -154,35 +153,39 @@ function download_to_file(){
   # shellcheck disable=SC2154
   local log_file="$log_dir/file.$uniq.log"
 
-  IO:progress "Downloading"
+  # IO:progress "Downloading"
   # shellcheck disable=SC2154
-  output_download=$( "$DOWNLOADER" "${yt_options[@]}" "$url" 2> "$log_file" \
-  | grep "Destination:" \
-  | tail -1 \
-  | cut -f3- -d' ' )
+  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>"$log_file" |
+    grep "Destination:" |
+    tail -1 |
+    cut -f3- -d' ')
 
   [[ -z "$output_download" ]] && IO:die "No output file"
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
-  IO:success "$output_download"
+  IO:print "$output_download"
   output_root=$(basename "$output_download" ".$FORMAT")
-  if [[ -n "$SPLITTER" ]] ; then
+  if [[ -n "$SPLITTER" ]]; then
     Os:require demucs "python3 -m pip install -U demucs"
-    IO:progress "Splitting ${output_root:_: })"
-  case "$SPLITTER" in
-      # demucs --help
-      #usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT] [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS] [--overlap OVERLAP] [--no-split | --segment SEGMENT] [--two-stems STEM] [--int24 | --float32] [--clip-mode {rescale,clamp}] [--mp3] [--mp3-bitrate MP3_BITRATE] [-j JOBS]
-      #                       tracks [tracks ...]
-      #
+    IO:progress "Splitting ${output_root})"
+    case "$SPLITTER" in
+    # demucs --help
+    #usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT] [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS] [--overlap OVERLAP] [--no-split | --segment SEGMENT] [--two-stems STEM] [--int24 | --float32] [--clip-mode {rescale,clamp}] [--mp3] [--mp3-bitrate MP3_BITRATE] [-j JOBS]
+    #                       tracks [tracks ...]
+    #
 
     full)
-      demucs -o "$OUT_DIR" "$output_download" &>> "$log_file"
+      demucs -o "$OUT_DIR" "$output_download" &>>"$log_file"
       find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
       ;;
 
     voice)
-      demucs -o "$OUT_DIR" --two-stems voice "$output_download" &>>  "$log_file"
+      demucs -o "$OUT_DIR" --two-stems voice "$output_download" &>>"$log_file"
       find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
-    ;;
+      ;;
+
+    none)
+      IO:debug "skip SPLITTER"
+      ;;
 
     *)
       IO:die "Splitter [$SPLITTER] not supported"
@@ -190,7 +193,6 @@ function download_to_file(){
     esac
 
   fi
-
 
 }
 

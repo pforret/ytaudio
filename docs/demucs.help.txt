@@ -1,0 +1,50 @@
+usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT]
+                       [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS]
+                       [--overlap OVERLAP] [--no-split | --segment SEGMENT]
+                       [--two-stems STEM] [--int24 | --float32]
+                       [--clip-mode {rescale,clamp}] [--mp3]
+                       [--mp3-bitrate MP3_BITRATE] [-j JOBS]
+                       tracks [tracks ...]
+
+Separate the sources for the given tracks
+
+positional arguments:
+  tracks                Path to tracks
+
+options:
+  -h, --help            show this help message and exit
+  -s SIG, --sig SIG     Locally trained XP signature.
+  -n NAME, --name NAME  Pretrained model name or signature. Default is
+                        mdx_extra_q.
+  --repo REPO           Folder containing all pre-trained models for use with
+                        -n.
+  -v, --verbose
+  -o OUT, --out OUT     Folder where to put extracted tracks. A subfolder with
+                        the model name will be created.
+  --filename FILENAME   Set the name of output file. Use "{track}",
+                        "{trackext}", "{stem}", "{ext}" to use variables of
+                        track name without extension, track extension, stem
+                        name and default output file extension. Default is
+                        "{track}/{stem}.{ext}".
+  -d DEVICE, --device DEVICE
+                        Device to use, default is cuda if available else cpu
+  --shifts SHIFTS       Number of random shifts for equivariant
+                        stabilization.Increase separation time but improves
+                        quality for Demucs. 10 was used in the original paper.
+  --overlap OVERLAP     Overlap between the splits.
+  --no-split            Doesn't split audio in chunks. This can use large
+                        amounts of memory.
+  --segment SEGMENT     Set split size of each chunk. This can help save
+                        memory of graphic card.
+  --two-stems STEM      Only separate audio into {STEM} and no_{STEM}.
+  --int24               Save wav output as 24 bits wav.
+  --float32             Save wav output as float32 (2x bigger).
+  --clip-mode {rescale,clamp}
+                        Strategy for avoiding clipping: rescaling entire
+                        signal if necessary (rescale) or hard clipping
+                        (clamp).
+  --mp3                 Convert the output wavs to mp3.
+  --mp3-bitrate MP3_BITRATE
+                        Bitrate of converted mp3.
+  -j JOBS, --jobs JOBS  Number of jobs. This can increase memory usage but
+                        will be much faster when multiple cores are available.
