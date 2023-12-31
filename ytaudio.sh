@@ -572,7 +572,7 @@ Script:check() {
 Option:usage() {
   IO:print "Program : ${txtInfo}$script_basename${txtReset}  by ${txtWarn}$script_author${txtReset}"
   IO:print "Version : ${txtInfo}v$script_version${txtReset} (${txtWarn}$script_modified${txtReset})"
-  IO:print "Purpose : ${txtInfo}Download audio (YouTube/Soundcloud/...) and split stems${txtReset}"
+  IO:print "Purpose : ${txtInfo}Download audio (YouTube/Soundcloud/...) and split into stems${txtReset}"
   echo -n "Usage   : $script_basename"
   Option:config |
     awk '

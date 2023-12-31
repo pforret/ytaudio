@@ -15,16 +15,16 @@ Get audio from YT
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.1.0 (Aug  3 14:06:00 2023)
-Purpose : Get audio from YT
+Version : v1.2.0 (Dec 31 15:26:17 2023)
+Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
 Usage   : ytaudio [-h] [-q] [-v] [-f] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
     -h|--help        : [flag] show usage [default: off]
     -q|--quiet       : [flag] no output [default: off]
     -v|--verbose     : [flag] also show debug messages [default: off]
     -f|--force       : [flag] do not ask for confirmation (always yes) [default: off]
-    -l|--log_dir <?> : [option] folder for log files   [default: /Users/pforret/log/ytaudio]
-    -t|--tmp_dir <?> : [option] folder for temp files  [default: /tmp/ytaudio]
+    -l|--log_dir <?> : [option] folder for log files   [default: log]
+    -t|--tmp_dir <?> : [option] folder for temp files  [default: tmp]
     -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
