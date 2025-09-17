@@ -6,7 +6,7 @@
 ![GH License](https://img.shields.io/github/license/pforret/ytaudio)
 [![basher install](https://img.shields.io/badge/basher-install-white?logo=gnu-bash&style=flat)](https://basher.gitparade.com/package/)
 
-# pforret/ytaudio
+# [pforret/ytaudio](https://github.com/pforret/ytaudio)
 
 ![](assets/ytaudio.jpg)
 ytaudio is a bash script for downloading audio from YouTube/SoundCloud and optionally splitting into stems using AI.
