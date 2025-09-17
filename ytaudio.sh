@@ -49,6 +49,7 @@ flag|h|help|show usage
 flag|q|quiet|no output
 flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
+flag|N|NORMALIZE|normalize output audio
 option|l|log_dir|folder for log files |log
 option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
@@ -162,6 +163,7 @@ function download_to_file() {
 
   [[ -z "$output_download" ]] && IO:die "No output file"
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
+  ((NORMALIZE)) &&
   IO:print "$output_download"
   output_root=$(basename "$output_download" ".$FORMAT")
   if [[ -n "$SPLITTER" ]]; then

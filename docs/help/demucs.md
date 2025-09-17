@@ -1,3 +1,16 @@
+# Demucs
+
+## Description
+
+**Demucs** is a state-of-the-art music source separation model, currently capable of separating drums, bass, and vocals from the rest of the accompaniment. 
+Demucs utilizes a convolutional neural network architecture to achieve high-quality separation results.
+
+* :simple-github: [facebookresearch/demucs](https://github.com/facebookresearch/demucs) (now archived)
+* :simple-github: [adefossez/demucs](https://github.com/adefossez/demucs) (fork by original author)
+
+## Usage
+
+```
 usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT]
                        [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS]
                        [--overlap OVERLAP] [--no-split | --segment SEGMENT]
@@ -48,3 +61,4 @@ options:
                         Bitrate of converted mp3.
   -j JOBS, --jobs JOBS  Number of jobs. This can increase memory usage but
                         will be much faster when multiple cores are available.
+```

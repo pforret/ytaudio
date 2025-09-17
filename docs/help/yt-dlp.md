@@ -1,3 +1,16 @@
+# yt-dlp
+
+## Description
+
+yt-dlp is a command-line program to download videos from YouTube.com and a few more sites. It requires Python 3.7+.
+It is a fork of the now inactive youtube-dl. It features additional video sites, formats, and fixes.
+
+:simple-github: [github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp)
+
+
+## Usage
+
+```
 Usage: yt-dlp [OPTIONS] URL [URL...]
 
 Options:
@@ -802,3 +815,4 @@ Options:
                                     arguments for different extractors
 
 See full documentation at  https://github.com/yt-dlp/yt-dlp#readme
+```
