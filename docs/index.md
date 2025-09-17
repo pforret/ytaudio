@@ -90,4 +90,4 @@ python3 -m pip install -U demucs
 
 * script created with [bashew](https://github.com/pforret/bashew)
 
-&copy; 2022 Peter Forret
+&copy; 2022-2025 Peter Forret
