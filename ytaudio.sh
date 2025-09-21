@@ -13,7 +13,7 @@ readonly script_author="peter@forret.com"
 readonly script_created="2022-05-20"
 readonly run_as_root=-1 # run_as_root: 0 = don't check anything / 1 = script MUST run as root / -1 = script MAY NOT run as root
 
-## some initialisation
+## some initialization
 action=""
 script_prefix=""
 script_basename=""
@@ -30,7 +30,7 @@ function Option:config() {
   ###     option|<short>|<long>|<description>|<default>
   ###     e.g. "-e <extension>" or "--extension <extension>" for a file extension
   ###     will be available a $<long> in the script e.g. $extension
-  ### list: add an list/array item / 1 value specified
+  ### list: add a list/array item / 1 value specified
   ###     list|<short>|<long>|<description>| (default is ignored)
   ###     e.g. "-u <user1> -u <user2>" or "--user <user1> --user <user2>"
   ###     will be available a $<long> array in the script e.g. ${user[@]}
@@ -156,6 +156,7 @@ function download_to_file() {
 
   # IO:progress "Downloading"
   # shellcheck disable=SC2154
+  IO:debug "Download $url ... "
   output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" |
     grep "Destination:" |
     tail -1 |
@@ -163,7 +164,19 @@ function download_to_file() {
 
   [[ -z "$output_download" ]] && IO:die "No output file"
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
-  ((NORMALIZE)) &&
+
+  if [[ -n "$NORMALIZE" ]] ; then
+    Os:require ffmpeg
+    measure_volume "$output_download"
+    IO:debug "Normalizing ${output_download})"
+    local output_normalized
+    output_normalized="${output_download%.*}_normalized.${FORMAT}"
+    ffmpeg -hide_banner  -i "$output_download" -af "loudnorm=I=-12" -y "$output_normalized" > "$log_file" 2>&1
+    measure_volume "$output_normalized"
+    mv -f "$output_normalized" "$output_download"
+    IO:debug "Downloaded and normalized ${output_download}"
+  fi
+
   IO:print "$output_download"
   output_root=$(basename "$output_download" ".$FORMAT")
   if [[ -n "$SPLITTER" ]]; then
@@ -198,6 +211,11 @@ function download_to_file() {
 
 }
 
+function measure_volume() {
+  volume_r128=$(ffmpeg -hide_banner -i "$1" -filter:a "ebur128=framelog=quiet" -f null - 2>&1 | awk '/I:/ { print $2,$3}')
+  volume_db=$(ffmpeg -hide_banner -i "$1" -filter:a "volumedetect"           -f null - 2>&1 | awk '/mean_volume/ {print $5,$6}')
+  IO:debug "Volume: R128 $volume_r128  /  Mean $volume_db"
+}
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
 #####################################################################
