@@ -78,14 +78,14 @@ Script:main() {
   case $action in
   get)
   #TIP: use «$script_prefix get» to download 1 URL
-  #TIP:> $script_prefix get
+  #TIP:> $script_prefix get https://www.youtube.com/watch?v=mMfxI3r_LyA
   # shellcheck disable=SC2154
     download_to_file "$input"
     ;;
 
   search)
-  #TIP: use «$script_prefix get» to download 1 URL
-  #TIP:> $script_prefix get
+  #TIP: use «$script_prefix search» to download 1 URL
+  #TIP:> $script_prefix search "Modjo - Lady"
     local url
   # shellcheck disable=SC2154
     url="$(search_in_youtube "$input")"
@@ -93,7 +93,7 @@ Script:main() {
     ;;
 
   loop)
-    #TIP: use «$script_prefix loop» to keep downloading
+    #TIP: use «$script_prefix loop» to keep downloading one URL after the other
     #TIP:> $script_prefix loop
     local url
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
@@ -104,8 +104,8 @@ Script:main() {
     ;;
 
   parallel)
-    #TIP: use «$script_prefix parallel» to ...
-    #TIP:> $script_prefix loop
+    #TIP: use «$script_prefix parallel» to download URLs simultaneously
+    #TIP:> $script_prefix parallel
     local url
     IO:print "Copy/paste a URL and press <return> to start the download (in background)"
     IO:progress " "
@@ -233,7 +233,7 @@ function download_to_file() {
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
   final_output="$output_download"
 
-  if [[ -n "$NORMALIZE" ]] ; then
+  if [[ "$NORMALIZE" -gt 0 ]] ; then
     IO:progress "Normalize $(basename "$final_output")          "
     local loudness_before loudness_after
     ## ffmpeg -i "$audio_file" -af loudnorm=I=-14:LRA=11:TP=-1.5 -y "normalized_"$audio_file
@@ -289,7 +289,7 @@ function download_to_file() {
 
   fi
 
-  if [[ -n "$MP3" ]] ; then
+  if [[ "$MP3" -gt 0 ]] ; then
     IO:progress "Transcode $(basename "$final_output")          "
     # ffmpeg -i "normalized_"$audio_file -b:a 320k "dj_ready_$(basename "$url").mp3"
     local input_compress="$output_download"
@@ -303,7 +303,7 @@ function download_to_file() {
     final_output="$output_compress"
   fi
 
-  if [[ -n "$CLEAN" ]] ; then
+  if [[ "$CLEAN" -gt 0 ]] ; then
     IO:progress "Clean $(basename "$final_output")          "
     local folder old_name new_name
     folder="$(dirname "$final_output")"

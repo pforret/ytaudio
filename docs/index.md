@@ -16,9 +16,9 @@ Built with the bashew framework, it's a command-line tool with multiple action m
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.2.0 (Dec 31 15:26:17 2023)
+Version : v1.4.0 (Oct 28 19:03:42 2025)
 Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
-Usage   : ytaudio [-h] [-q] [-v] [-f] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
+Usage   : ytaudio [-h] [-q] [-v] [-f] [-N] [-M] [-C] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
     -h|--help        : [flag] show usage [default: off]
     -q|--quiet       : [flag] no output [default: off]
@@ -26,21 +26,60 @@ Flags, options and parameters:
     -f|--force       : [flag] do not ask for confirmation (always yes) [default: off]
     -l|--log_dir <?> : [option] folder for log files   [default: log]
     -t|--tmp_dir <?> : [option] folder for temp files  [default: tmp]
+    -C|--CLEAN       : [flag] cleanup the output file name [default: off]
     -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
+    -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
+    -N|--NORMALIZE   : [flag] normalize output audio [default: off]
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
     -Q|--QUALITY <?> : [option] audio quality  [default: 1]
     -S|--SPLITTER <?>: [option] stem splitting (full/voice)
-    <action>         : [choice] action to perform  [options: get,loop,parallel,check,env,update]
+    <action>         : [choice] action to perform  [options: get,search,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
+
+### TIPS & EXAMPLES
+* use 'ytaudio get' to download 1 URL
+  ytaudio get "https://www.youtube.com/watch?v=mMfxI3r_LyA"
+* use 'ytaudio search' to download 1 URL
+  ytaudio search "Modjo - Lady"
+* use 'ytaudio loop' to keep downloading one URL after the other
+  ytaudio loop
+* use 'ytaudio parallel' to download URLs simultaneously
+  ytaudio parallel
+* use 'ytaudio check' to check if this script is ready to execute and what values the options/flags are
+  ytaudio check
+* use 'ytaudio env' to generate an example .env file
+  ytaudio env > .env
+* use 'ytaudio update' to update to the latest version
+  ytaudio update
 ```
 
 ## ⚡️ Examples
 
 ```bash
-# download 1 URL
+# download 1 URL (basic)
 % ytaudio get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
-./Tears For Fears - Everybody Wants To Rule The World.251s.mp3
+./Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.wav
+
+# and this happened
+#    19:13:14 | [ytaudio] 1.4.0 started
+#    19:13:14 | yt-dlp https://www.youtube.com/watch?v=SFU1GeGFpzY
+#    19:13:22 | [ytaudio] ended after 9 secs
+
+
+# download 1 URL (with options)
+% ytaudio -N -M -C get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
+./TearsForFears-EverybodyWantsToRuleTheWorld.mp3
+
+# and this happened
+#    19:06:16 | [ytaudio] 1.4.0 started
+#    19:06:16 | yt-dlp https://www.youtube.com/watch?v=SFU1GeGFpzY
+#    19:06:26 | Normalize output/Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.wav (-14 LUFS)
+#    19:06:35 | Loudness corrected: { 'volume_r128': -13.9 LUFS, 'mean_volume': -16.8 dB } => { 'volume_r128': -13.6 LUFS, 'mean_volume': -16.4 dB }
+#    19:06:35 | ffmpeg output/Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.wav -> output/Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.mp3
+#    19:06:38 | Cleanup: 'Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.mp3' => 'TearsForFears-EverybodyWantsToRuleTheWorld.mp3'
+#    19:06:38 | [ytaudio] ended after 23 secs
+
 
 # copy/paste URLs to download them one by one
 % ytaudio loop
