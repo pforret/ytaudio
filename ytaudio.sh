@@ -59,7 +59,7 @@ option|F|FORMAT|output audio format|wav
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
-choice|1|action|action to perform|get,loop,parallel,check,env,update
+choice|1|action|action to perform|get,search,loop,parallel,check,env,update
 param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
 }
@@ -77,10 +77,19 @@ Script:main() {
   action=$(Str:lower "$action")
   case $action in
   get)
-    #TIP: use «$script_prefix get» to download 1 URL
-    #TIP:> $script_prefix get
-    # shellcheck disable=SC2154
+  #TIP: use «$script_prefix get» to download 1 URL
+  #TIP:> $script_prefix get
+  # shellcheck disable=SC2154
     download_to_file "$input"
+    ;;
+
+  search)
+  #TIP: use «$script_prefix get» to download 1 URL
+  #TIP:> $script_prefix get
+    local url
+  # shellcheck disable=SC2154
+    url="$(search_in_youtube "$input")"
+    download_to_file "$url"
     ;;
 
   loop)
@@ -102,8 +111,7 @@ Script:main() {
     IO:progress " "
     while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-      IO:success "Downloading $url"
-      download_to_file "$url"
+      download_to_file "$url" &
     done
     ;;
 
@@ -135,6 +143,60 @@ Script:main() {
 #####################################################################
 ## Put your helper scripts here
 #####################################################################
+
+function search_in_youtube(){
+  # input:  query string like: "Artist - Title"
+  # output: best matching YouTube video URL (empty on failure)
+  # uses:   yt-dlp via $DOWNLOADER
+  local query url uniq log_media
+  # accept entire arg list as query to preserve spaces
+  query="$*"
+  # trim leading/trailing whitespace
+  query="${query##[[:space:]]*}"
+  query="${query%%*[[:space:]]}"
+
+  if [[ -z "$query" ]]; then
+    IO:debug "search_in_youtube: empty query"
+    echo ""
+    return 1
+  fi
+
+  uniq=$(echo "$query" | Str:digest 6)
+  # log per search like in download_to_file
+  # shellcheck disable=SC2154
+  log_media="$log_dir/ytaudio.youtube.com.$uniq.log"
+
+  IO:debug "Search YouTube for: $query"
+  IO:log   "SEARCH: $query"
+
+  # Primary attempt: ytsearch1 (best match)
+  # We print the webpage URL; --no-playlist to avoid channel/playlist URLs
+  url=$("$DOWNLOADER" \
+        --no-warnings \
+        --no-playlist \
+        --default-search "ytsearch" \
+        --print "%(webpage_url)s" \
+        "ytsearch1:$query" 2>>"$log_media" | head -n1 | tr -d '\r')
+
+  # Fallback: try top results and pick the first valid URL
+  if [[ -z "$url" ]]; then
+    url=$("$DOWNLOADER" \
+          --no-warnings \
+          --no-playlist \
+          --default-search "ytsearch" \
+          --print "%(webpage_url)s" \
+          "ytsearch5:$query" 2>>"$log_media" | grep -E '^https?://[^ ]+' | head -n1 | tr -d '\r')
+  fi
+
+  if [[ -z "$url" ]]; then
+    IO:debug "No YouTube result for: $query"
+    echo ""
+    return 2
+  fi
+
+  IO:debug "YouTube best match: $url"
+  echo "$url"
+}
 
 function download_to_file() {
   local url="$1"
@@ -230,22 +292,23 @@ function download_to_file() {
   if [[ -n "$MP3" ]] ; then
     IO:progress "Transcode $(basename "$final_output")          "
     # ffmpeg -i "normalized_"$audio_file -b:a 320k "dj_ready_$(basename "$url").mp3"
-    input_compress="$output_download"
+    local input_compress="$output_download"
     ## replace .wav by .mp3 in ${input_compress}
-    output_compress="${input_compress%.wav}.mp3"
+    local output_compress="${input_compress%.wav}.mp3"
     IO:debug "Transcoding ${input_compress}"
     IO:log "ffmpeg $input_compress -> $output_compress"
     ffmpeg -i "$input_compress" -b:a 320k -y "$output_compress" 2>> "$log_media"
+    [[ -f "$output_compress" ]] && rm "$input_compress"
     IO:debug "Transcoded ${output_compress}"
     final_output="$output_compress"
   fi
 
   if [[ -n "$CLEAN" ]] ; then
     IO:progress "Clean $(basename "$final_output")          "
-    local folder filename
+    local folder old_name new_name
     folder="$(dirname "$final_output")"
-    filename="$(basename "$final_output")"
-    newname="$(echo "$filename" | awk '
+    old_name="$(basename "$final_output")"
+    new_name="$(echo "$old_name" | awk '
     {
         gsub(/_Video\./,".");
         gsub(/\._/,"");
@@ -256,11 +319,11 @@ function download_to_file() {
         gsub(/Remastered/,"");
         print;
         }')"
-    IO:debug "Cleanup: '$filename' => '$newname'"
-    if [[ "$newname" != "$filename" ]] ; then
-      IO:log "Cleanup: '$filename' => '$newname'"
-      mv "$folder/$filename" "$folder/$newname"
-      final_output="$folder/$newname"
+    IO:debug "Cleanup: '$old_name' => '$new_name'"
+    if [[ "$new_name" != "$old_name" ]] ; then
+      IO:log "Cleanup: '$old_name' => '$new_name'"
+      mv "$folder/$old_name" "$folder/$new_name"
+      final_output="$folder/$new_name"
     fi
   fi
 
