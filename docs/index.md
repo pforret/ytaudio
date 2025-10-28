@@ -85,7 +85,7 @@ Flags, options and parameters:
 % ytaudio loop
 Copy/paste a URL and press <return> to start the download (one at a time)
 https://www.youtube.com/watch?v=5J7IrPVLc4U
-output/SteelyDan-HeyNineteen-.mp3
+output/SteelyDan-HeyNineteen.mp3
 https://www.youtube.com/watch?v=ghcsrblhn7A
 output/SteelyDan-DirtyWork.mp3
 
