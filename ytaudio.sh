@@ -50,6 +50,8 @@ flag|q|quiet|no output
 flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
 flag|N|NORMALIZE|normalize output audio
+flag|M|MP3|transcode to high-quality MP3
+flag|C|CLEAN|cleanup the output file name
 option|l|log_dir|folder for log files |log
 option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
@@ -71,17 +73,6 @@ Script:main() {
 
   Os:require "awk"
   Os:require "$DOWNLOADER"
-
-  # shellcheck disable=SC2154
-  local yt_options=(--no-part
-    --restrict-filenames
-    --cache-dir "$tmp_dir"
-    --audio-format "$FORMAT"
-    --audio-quality "$QUALITY"
-    --no-progress
-    --console-title
-    -x
-    -o "$OUT_DIR/%(title)s.%(duration)ss.%(ext)s")
 
   action=$(Str:lower "$action")
   case $action in
@@ -149,37 +140,60 @@ function download_to_file() {
   local url="$1"
   local output_download
   local output_root
-  # local uniq
-  # uniq=$(echo "$url" | Str:digest 6)
+  local uniq
+  uniq=$(echo "$url" | Str:digest 6)
+  host=$(parse_host "$url")
   # shellcheck disable=SC2154
-  # local log_file="$log_dir/file.$uniq.log"
+  local log_media="$log_dir/ytaudio.$host.$uniq.log"
 
-  # IO:progress "Downloading"
+  # shellcheck disable=SC2154
+  local yt_options=(--no-part
+    --restrict-filenames
+    --cache-dir "$tmp_dir"
+    --audio-format "$FORMAT"
+    --audio-quality "$QUALITY"
+    --no-progress
+    --console-title
+    -x
+    -o "$OUT_DIR/%(title)s.%(ext)s")
+
+  IO:progress "Downloading $url          "
+  final_output=""
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
-  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" |
+  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> $log_media |
     grep "Destination:" |
     tail -1 |
     cut -f3- -d' ')
 
   [[ -z "$output_download" ]] && IO:die "No output file"
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
+  final_output="$output_download"
 
   if [[ -n "$NORMALIZE" ]] ; then
+    IO:progress "Normalize $(basename "$final_output")          "
+    local loudness_before loudness_after
+    ## ffmpeg -i "$audio_file" -af loudnorm=I=-14:LRA=11:TP=-1.5 -y "normalized_"$audio_file
     Os:require ffmpeg
-    measure_volume "$output_download"
-    IO:debug "Normalizing ${output_download})"
+    loudness_before="$(measure_volume "$output_download")"
+    IO:debug "Normalizing ${output_download} ..."
     local output_normalized
     output_normalized="${output_download%.*}_normalized.${FORMAT}"
-    ffmpeg -hide_banner  -i "$output_download" -af "loudnorm=I=-12" -y "$output_normalized" > "$log_file" 2>&1
-    measure_volume "$output_normalized"
-    mv -f "$output_normalized" "$output_download"
-    IO:debug "Downloaded and normalized ${output_download}"
+    ffmpeg -hide_banner  -i "$output_download" -af "loudnorm=I=-14:LRA=11:TP=-1.5" -y "$output_normalized" 2>> "$log_media"
+    loudness_after="$(measure_volume "$output_normalized")"
+    if [[ $loudness_before != $loudness_after ]]; then
+      IO:debug "Loudness corrected: $loudness_before => $loudness_after"
+      mv -f "$output_normalized" "$output_download"
+    else
+      rm "$output_normalized"
+    fi
+    final_output="$output_download"
+    IO:debug "Normalized ${output_download}"
   fi
 
-  IO:print "$output_download"
   output_root=$(basename "$output_download" ".$FORMAT")
   if [[ -n "$SPLITTER" ]]; then
+    IO:progress "Split $(basename "$final_output")          "
     Os:require demucs "python3 -m pip install -U demucs"
     IO:progress "Splitting ${output_root})"
     case "$SPLITTER" in
@@ -209,12 +223,82 @@ function download_to_file() {
 
   fi
 
+  if [[ -n "$MP3" ]] ; then
+    IO:progress "Transcode $(basename "$final_output")          "
+    # ffmpeg -i "normalized_"$audio_file -b:a 320k "dj_ready_$(basename "$url").mp3"
+    input_compress="$output_download"
+    ## replace .wav by .mp3 in ${input_compress}
+    output_compress="${input_compress%.wav}.mp3"
+    IO:debug "Transcoding ${input_compress}"
+    ffmpeg -i "$input_compress" -b:a 320k -y "$output_compress" 2>> "$log_media"
+    IO:debug "Transcoded ${output_compress}"
+    final_output="$output_compress"
+  fi
+
+  if [[ -n "$CLEAN" ]] ; then
+    IO:progress "Clean $(basename "$final_output")          "
+    local folder filename
+    folder="$(dirname "$final_output")"
+    filename="$(basename "$final_output")"
+    newname="$(echo "$filename" | awk '
+    {
+        gsub(/_Video\./,".");
+        gsub(/\._/,"");
+        gsub(/_/,"");
+        gsub(/OfficialMusicVideo/,"");
+        gsub(/OfficialVideo/,"");
+        gsub(/OfficialAudio/,"");
+        gsub(/Remastered/,"");
+        print;
+        }')"
+    IO:debug "Cleanup: '$filename' => '$newname'"
+    if [[ "$newname" != "$filename" ]] ; then
+      mv "$folder/$filename" "$folder/$newname"
+      final_output="$folder/$newname"
+    fi
+  fi
+
+  IO:print "$final_output                                                       "
 }
 
 function measure_volume() {
+  local volume_r128 volume_db
   volume_r128=$(ffmpeg -hide_banner -i "$1" -filter:a "ebur128=framelog=quiet" -f null - 2>&1 | awk '/I:/ { print $2,$3}')
   volume_db=$(ffmpeg -hide_banner -i "$1" -filter:a "volumedetect"           -f null - 2>&1 | awk '/mean_volume/ {print $5,$6}')
-  IO:debug "Volume: R128 $volume_r128  /  Mean $volume_db"
+  echo "{ 'volume_r128': $volume_r128, 'mean_volume': $volume_db }"
+}
+
+function parse_host(){
+  # input: https://www.youtube.com/watch?v=fKKNPLowteY
+  # output: www.youtube.com
+  #
+  # Extract the host part from a URL, handling cases with/without scheme,
+  # credentials, ports, paths, queries, and fragments.
+  # Returns empty string and non-zero exit if no input provided.
+  local url host
+  url="${1:-}"
+  if [[ -z "$url" ]]; then
+    echo ""
+    return 1
+  fi
+  # Ensure we have a // delimiter to simplify stripping the scheme
+  if [[ "$url" != *"://"* ]]; then
+    url="//$url"
+  fi
+  # Remove scheme (up to and including //)
+  host="${url#*//}"
+  # Trim path, query, fragment
+  host="${host%%/*}"
+  host="${host%%\?*}"
+  host="${host%%\#*}"
+  # Remove credentials if present (user:pass@host)
+  host="${host#*@}"
+  # Remove port if present (:port)
+  host="${host%%:*}"
+  # remove "www." if present
+  host="${host#www.}"
+
+  echo "$host"
 }
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
