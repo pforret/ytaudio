@@ -95,7 +95,7 @@ output/SteelyDan-DirtyWork.mp3
 % ytaudio parallel
 Copy/paste a URL and press <return> to start the download (in background)
 https://www.youtube.com/watch?v=5J7IrPVLc4U
-https://www.youtube.com/watch?v=ghcsrblhn7Ach?v=5J7IrPVLc4U
+https://www.youtube.com/watch?v=ghcsrblhn7A
 output/SteelyDan-HeyNineteen.mp3
 output/SteelyDan-DirtyWork.mp3
 
