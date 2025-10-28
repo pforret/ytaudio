@@ -84,20 +84,20 @@ Flags, options and parameters:
 # copy/paste URLs to download them one by one
 % ytaudio loop
 Copy/paste a URL and press <return> to start the download (one at a time)
-https://www.youtube.com/watch?v=7dtpj8qa1hQ
-./Funky Drummer (Bonus Beat Reprise).177s.mp3
-https://www.youtube.com/watch?v=T1j1_aeK6WA
-./Bernard 'Pretty' Purdie - The Legendary Purdie Shuffle.388s.mp3
+https://www.youtube.com/watch?v=5J7IrPVLc4U
+output/SteelyDan-HeyNineteen-.mp3
+https://www.youtube.com/watch?v=ghcsrblhn7A
+output/SteelyDan-DirtyWork.mp3
 
 ✅  Program finished!
 
 # copy/paste URls to start the download (in parallel)
-% ytaudio parallel                                         
+% ytaudio parallel
 Copy/paste a URL and press <return> to start the download (in background)
-https://www.youtube.com/watch?v=5J7IrPVLc4U                                    
-https://www.youtube.com/watch?v=ghcsrblhn7A
-./Steely Dan - Hey Nineteen - HQ Audio -- LYRICS.295s.mp3
-./Steely Dan - Dirty Work.191s.mp3
+https://www.youtube.com/watch?v=5J7IrPVLc4U
+https://www.youtube.com/watch?v=ghcsrblhn7Ach?v=5J7IrPVLc4U
+output/SteelyDan-HeyNineteen.mp3
+output/SteelyDan-DirtyWork.mp3
 
 ✅  Program finished!
 ```

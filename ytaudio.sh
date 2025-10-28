@@ -316,7 +316,11 @@ function download_to_file() {
         gsub(/OfficialMusicVideo/,"");
         gsub(/OfficialVideo/,"");
         gsub(/OfficialAudio/,"");
+        gsub(/LYRICS/,"");
         gsub(/Remastered/,"");
+        gsub(/HQAudio/,"");
+        gsub(/\-\-+/,"-");
+        gsub(/\-\./,".");
         print;
         }')"
     IO:debug "Cleanup: '$old_name' => '$new_name'"
