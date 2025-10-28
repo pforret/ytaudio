@@ -161,6 +161,7 @@ function download_to_file() {
   final_output=""
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
+  IO:log "$DOWNLOADER $url"
   output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> $log_media |
     grep "Destination:" |
     tail -1 |
@@ -177,12 +178,14 @@ function download_to_file() {
     Os:require ffmpeg
     loudness_before="$(measure_volume "$output_download")"
     IO:debug "Normalizing ${output_download} ..."
+    IO:log "Normalize ${output_download} (-14 LUFS)"
     local output_normalized
     output_normalized="${output_download%.*}_normalized.${FORMAT}"
     ffmpeg -hide_banner  -i "$output_download" -af "loudnorm=I=-14:LRA=11:TP=-1.5" -y "$output_normalized" 2>> "$log_media"
     loudness_after="$(measure_volume "$output_normalized")"
     if [[ $loudness_before != $loudness_after ]]; then
       IO:debug "Loudness corrected: $loudness_before => $loudness_after"
+      IO:log "Loudness corrected: $loudness_before => $loudness_after"
       mv -f "$output_normalized" "$output_download"
     else
       rm "$output_normalized"
@@ -191,11 +194,12 @@ function download_to_file() {
     IO:debug "Normalized ${output_download}"
   fi
 
-  output_root=$(basename "$output_download" ".$FORMAT")
+  output_root=$(basename "$final_output" ".$FORMAT")
   if [[ -n "$SPLITTER" ]]; then
     IO:progress "Split $(basename "$final_output")          "
     Os:require demucs "python3 -m pip install -U demucs"
-    IO:progress "Splitting ${output_root})"
+    IO:progress "Splitting ${final_output})"
+    IO:log "Split ${final_output} $SPLITTER"
     case "$SPLITTER" in
     # demucs --help
     #usage: demucs.separate [-h] [-s SIG | -n NAME] [--repo REPO] [-v] [-o OUT] [--filename FILENAME] [-d DEVICE] [--shifts SHIFTS] [--overlap OVERLAP] [--no-split | --segment SEGMENT] [--two-stems STEM] [--int24 | --float32] [--clip-mode {rescale,clamp}] [--mp3] [--mp3-bitrate MP3_BITRATE] [-j JOBS]
@@ -230,6 +234,7 @@ function download_to_file() {
     ## replace .wav by .mp3 in ${input_compress}
     output_compress="${input_compress%.wav}.mp3"
     IO:debug "Transcoding ${input_compress}"
+    IO:log "ffmpeg $input_compress -> $output_compress"
     ffmpeg -i "$input_compress" -b:a 320k -y "$output_compress" 2>> "$log_media"
     IO:debug "Transcoded ${output_compress}"
     final_output="$output_compress"
@@ -253,6 +258,7 @@ function download_to_file() {
         }')"
     IO:debug "Cleanup: '$filename' => '$newname'"
     if [[ "$newname" != "$filename" ]] ; then
+      IO:log "Cleanup: '$filename' => '$newname'"
       mv "$folder/$filename" "$folder/$newname"
       final_output="$folder/$newname"
     fi
