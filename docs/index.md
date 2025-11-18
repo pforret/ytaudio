@@ -16,7 +16,7 @@ Built with the bashew framework, it's a command-line tool with multiple action m
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.5.0 (Nov 19 2025)
+Version : v1.5.0 (Nov 19 00:14:26 2025)
 Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
 Usage   : ytaudio [-h] [-q] [-v] [-f] [-N] [-M] [-C] [-T] [-I] [-P] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
@@ -24,36 +24,36 @@ Flags, options and parameters:
     -q|--quiet       : [flag] no output [default: off]
     -v|--verbose     : [flag] also show debug messages [default: off]
     -f|--force       : [flag] do not ask for confirmation (always yes) [default: off]
+    -N|--NORMALIZE   : [flag] normalize output audio [default: off]
+    -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
+    -C|--CLEAN       : [flag] cleanup the output file name [default: off]
+    -T|--TRIM        : [flag] trim silence from beginning/end [default: off]
+    -I|--INFO        : [flag] lookup metadata and tag file [default: off]
+    -P|--SPECTRO     : [flag] generate spectrogram image [default: off]
     -l|--log_dir <?> : [option] folder for log files   [default: log]
     -t|--tmp_dir <?> : [option] folder for temp files  [default: tmp]
-    -C|--CLEAN       : [flag] cleanup the output file name [default: off]
     -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
-    -I|--INFO        : [flag] lookup metadata and tag file [default: off]
-    -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
-    -N|--NORMALIZE   : [flag] normalize output audio [default: off]
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
-    -P|--SPECTRO     : [flag] generate spectrogram image [default: off]
     -Q|--QUALITY <?> : [option] audio quality  [default: 1]
     -S|--SPLITTER <?>: [option] stem splitting (full/voice)
-    -T|--TRIM        : [flag] trim silence from beginning/end [default: off]
     <action>         : [choice] action to perform  [options: get,search,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
-
+                                  @github.com:pforret/ytaudio.git                                             
 ### TIPS & EXAMPLES
-* use 'ytaudio get' to download 1 URL
-  ytaudio get "https://www.youtube.com/watch?v=mMfxI3r_LyA"
-* use 'ytaudio search' to download 1 URL
+* use ytaudio get to download 1 URL
+  ytaudio get https://www.youtube.com/watch?v=mMfxI3r_LyA
+* use ytaudio search to download 1 URL
   ytaudio search "Modjo - Lady"
-* use 'ytaudio loop' to keep downloading one URL after the other
+* use ytaudio loop to keep downloading one URL after the other
   ytaudio loop
-* use 'ytaudio parallel' to download URLs simultaneously
+* use ytaudio parallel to download URLs simultaneously
   ytaudio parallel
-* use 'ytaudio check' to check if this script is ready to execute and what values the options/flags are
+* use ytaudio check to check if this script is ready to execute and what values the options/flags are
   ytaudio check
-* use 'ytaudio env' to generate an example .env file
+* use ytaudio env to generate an example .env file
   ytaudio env > .env
-* use 'ytaudio update' to update to the latest version
+* use ytaudio update to update to the latest version
   ytaudio update
 ```
 
