@@ -16,9 +16,9 @@ Built with the bashew framework, it's a command-line tool with multiple action m
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.4.0 (Oct 28 19:03:42 2025)
+Version : v1.5.0 (Nov 19 2025)
 Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
-Usage   : ytaudio [-h] [-q] [-v] [-f] [-N] [-M] [-C] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
+Usage   : ytaudio [-h] [-q] [-v] [-f] [-N] [-M] [-C] [-T] [-I] [-P] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
 Flags, options and parameters:
     -h|--help        : [flag] show usage [default: off]
     -q|--quiet       : [flag] no output [default: off]
@@ -29,11 +29,14 @@ Flags, options and parameters:
     -C|--CLEAN       : [flag] cleanup the output file name [default: off]
     -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
+    -I|--INFO        : [flag] lookup metadata and tag file [default: off]
     -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
     -N|--NORMALIZE   : [flag] normalize output audio [default: off]
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
+    -P|--SPECTRO     : [flag] generate spectrogram image [default: off]
     -Q|--QUALITY <?> : [option] audio quality  [default: 1]
     -S|--SPLITTER <?>: [option] stem splitting (full/voice)
+    -T|--TRIM        : [flag] trim silence from beginning/end [default: off]
     <action>         : [choice] action to perform  [options: get,search,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
 
@@ -91,7 +94,7 @@ output/SteelyDan-DirtyWork.mp3
 
 ✅  Program finished!
 
-# copy/paste URls to start the download (in parallel)
+# copy/paste URLs to start the download (in parallel)
 % ytaudio parallel
 Copy/paste a URL and press <return> to start the download (in background)
 https://www.youtube.com/watch?v=5J7IrPVLc4U
@@ -100,6 +103,36 @@ output/SteelyDan-HeyNineteen.mp3
 output/SteelyDan-DirtyWork.mp3
 
 ✅  Program finished!
+
+# download with metadata lookup and tagging (-I)
+# embeds artist, title, album, year, genre, country, and album artwork
+% ytaudio -I -M -C get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
+./TearsForFears_EverybodyWantsToRuleTheWorld.mp3
+
+# and this happened
+#    19:10:00 | yt-dlp https://www.youtube.com/watch?v=SFU1GeGFpzY
+#    19:10:10 | Metadata (itunes): Tears For Fears - Everybody Wants To Rule The World [Songs from the Big Chair] (1985) Pop [USA]
+#    19:10:12 | Rename: TearsForFears-EverybodyWantsToRuleTheWorld.mp3 => TearsForFears_EverybodyWantsToRuleTheWorld.mp3
+
+# download with spectrogram image (-P)
+% ytaudio -M -P get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
+./Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.mp3
+
+# creates both:
+#   Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.mp3
+#   Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.spectro.jpg
+
+# full processing pipeline: trim, normalize, metadata, MP3, clean filename, spectrogram
+% ytaudio -T -N -I -M -C -P get "https://www.youtube.com/watch?v=SFU1GeGFpzY"
+./TearsForFears_EverybodyWantsToRuleTheWorld.mp3
+
+# and this happened
+#    19:15:00 | yt-dlp https://www.youtube.com/watch?v=SFU1GeGFpzY
+#    19:15:08 | Trim silence Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.wav
+#    19:15:10 | Normalize Tears_For_Fears_-_Everybody_Wants_To_Rule_The_World.wav (-14 LUFS)
+#    19:15:18 | ffmpeg -> TearsForFears_EverybodyWantsToRuleTheWorld.mp3
+#    19:15:20 | Metadata (itunes): Tears For Fears - Everybody Wants To Rule The World
+#    19:15:22 | Spectrogram: TearsForFears_EverybodyWantsToRuleTheWorld.spectro.jpg
 ```
 
 ## 🚀 Installation
