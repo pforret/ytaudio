@@ -975,7 +975,7 @@ function Str:title() {
   # shellcheck disable=SC2020
   Str:lower "$1" |
     tr 'àáâäæãåāçćčèéêëēėęîïííīįìłñńôöòóœøōõßśšûüùúūÿžźż' 'aaaaaaaaccceeeeeeeiiiiiiilnnoooooooosssuuuuuyzzz' |
-    awk '{ gsub(/[\[\]@#$%^&*;,.:()<>!?\/+=_-]/," ",$0); print $0; }' |
+    awk '{ gsub(/[\[\]@#$%^&*;,.:()<>!?\/+=_"'"'"'-]/," ",$0); print $0; }' |
     awk '{
           for (i=1; i<=NF; ++i) {
               $i = toupper(substr($i,1,1)) tolower(substr($i,2))
