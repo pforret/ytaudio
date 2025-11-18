@@ -3,3 +3,5 @@
 /log/
 /output/
 /tmp/
+.DS_Store
+/.claude

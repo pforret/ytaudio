@@ -52,6 +52,9 @@ flag|f|force|do not ask for confirmation (always yes)
 flag|N|NORMALIZE|normalize output audio
 flag|M|MP3|transcode to high-quality MP3
 flag|C|CLEAN|cleanup the output file name
+flag|T|TRIM|trim silence from beginning/end
+flag|I|INFO|lookup metadata and tag file
+flag|P|SPECTRO|generate spectrogram image
 option|l|log_dir|folder for log files |log
 option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
@@ -89,7 +92,7 @@ Script:main() {
     local url
   # shellcheck disable=SC2154
     url="$(search_in_youtube "$input")"
-    download_to_file "$url"
+    download_to_file "$url" "$input"
     ;;
 
   loop)
@@ -200,6 +203,7 @@ function search_in_youtube(){
 
 function download_to_file() {
   local url="$1"
+  local search_query="${2:-}"  # Optional: original search query for metadata lookup
   local output_download
   local output_root
   local uniq
@@ -232,6 +236,23 @@ function download_to_file() {
   [[ -z "$output_download" ]] && IO:die "No output file"
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
   final_output="$output_download"
+
+  if [[ "$TRIM" -gt 0 ]] ; then
+    IO:progress "Trim silence $(basename "$final_output")          "
+    Os:require ffmpeg
+    IO:debug "Trimming silence from ${output_download} ..."
+    IO:log "Trim silence ${output_download}"
+    local output_trimmed
+    output_trimmed="${output_download%.*}_trimmed.${FORMAT}"
+    ffmpeg -hide_banner -i "$output_download" \
+      -af "silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse,silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse" \
+      -y "$output_trimmed" 2>> "$log_media"
+    if [[ -f "$output_trimmed" ]]; then
+      mv -f "$output_trimmed" "$output_download"
+      IO:debug "Trimmed ${output_download}"
+    fi
+    final_output="$output_download"
+  fi
 
   if [[ "$NORMALIZE" -gt 0 ]] ; then
     IO:progress "Normalize $(basename "$final_output")          "
@@ -331,6 +352,67 @@ function download_to_file() {
     fi
   fi
 
+  if [[ "$INFO" -gt 0 ]] ; then
+    IO:progress "Lookup metadata $(basename "$final_output")          "
+    local metadata_result
+    # Use provided search query, or extract from filename as fallback
+    if [[ -z "$search_query" ]]; then
+      search_query=$(basename "$final_output" | sed 's/\.[^.]*$//' | sed 's/_/ /g' | sed 's/-/ /g')
+      IO:debug "Extracted search query from filename: $search_query"
+    else
+      IO:debug "Using provided search query: $search_query"
+    fi
+
+    metadata_result=$(lookup_metadata "$search_query")
+
+    if [[ -n "$metadata_result" ]]; then
+      # Parse metadata: source|artist|title|album|year|genre|artwork_url|country
+      local meta_source meta_artist meta_title meta_album meta_year meta_genre meta_artwork meta_country
+      meta_source=$(echo "$metadata_result" | cut -d'|' -f1)
+      meta_artist=$(echo "$metadata_result" | cut -d'|' -f2)
+      meta_title=$(echo "$metadata_result" | cut -d'|' -f3)
+      meta_album=$(echo "$metadata_result" | cut -d'|' -f4)
+      meta_year=$(echo "$metadata_result" | cut -d'|' -f5)
+      meta_genre=$(echo "$metadata_result" | cut -d'|' -f6)
+      meta_artwork=$(echo "$metadata_result" | cut -d'|' -f7)
+      meta_country=$(echo "$metadata_result" | cut -d'|' -f8)
+
+      IO:debug "Metadata from $meta_source: $meta_artist - $meta_title"
+      IO:log "Metadata ($meta_source): $meta_artist - $meta_title [$meta_album] ($meta_year) $meta_genre [$meta_country]"
+
+      # Tag the audio file
+      IO:progress "Tagging $(basename "$final_output")          "
+      tag_audio_file "$final_output" "$meta_artist" "$meta_title" "$meta_album" "$meta_year" "$meta_genre" "$meta_artwork" "$meta_country"
+
+      # Rename file based on metadata
+      local new_filename folder extension
+      folder=$(dirname "$final_output")
+      extension="${final_output##*.}"
+      new_filename=$(format_filename "$meta_artist" "$meta_title")
+
+      if [[ -n "$new_filename" ]] && [[ "$new_filename" != "_" ]]; then
+        local new_path="$folder/${new_filename}.${extension}"
+        if [[ "$new_path" != "$final_output" ]]; then
+          IO:debug "Rename: $(basename "$final_output") => ${new_filename}.${extension}"
+          IO:log "Rename: $(basename "$final_output") => ${new_filename}.${extension}"
+          mv "$final_output" "$new_path"
+          final_output="$new_path"
+        fi
+      fi
+    else
+      IO:debug "No metadata found, keeping original filename"
+    fi
+  fi
+
+  if [[ "$SPECTRO" -gt 0 ]] ; then
+    IO:progress "Generate spectrogram $(basename "$final_output")          "
+    local spectro_file
+    spectro_file=$(generate_spectrogram "$final_output" "$log_media")
+    if [[ -n "$spectro_file" ]]; then
+      IO:debug "Spectrogram saved: $spectro_file"
+    fi
+  fi
+
   IO:print "$final_output                                                       "
 }
 
@@ -373,6 +455,319 @@ function parse_host(){
 
   echo "$host"
 }
+
+function search_itunes() {
+  # Search iTunes API for track metadata
+  # Input: search query (e.g., "artist name song title")
+  # Output: JSON with artist, title, album, year, genre (or empty on failure)
+  local query="$1"
+  local encoded_query result
+
+  [[ -z "$query" ]] && echo "" && return 1
+
+  # URL encode the query (simple version)
+  encoded_query=$(echo "$query" | sed 's/ /+/g' | sed 's/[^a-zA-Z0-9+]//g')
+
+  IO:debug "iTunes search: $query"
+  result=$(curl -s --max-time 10 "https://itunes.apple.com/search?term=${encoded_query}&entity=song&limit=1")
+
+  local count
+  count=$(echo "$result" | grep -o '"resultCount":[0-9]*' | cut -d: -f2)
+
+  if [[ "$count" -gt 0 ]]; then
+    # Extract metadata from iTunes response
+    local artist title album year genre artwork_url country
+    artist=$(echo "$result" | grep -o '"artistName":"[^"]*"' | head -1 | cut -d'"' -f4)
+    title=$(echo "$result" | grep -o '"trackName":"[^"]*"' | head -1 | cut -d'"' -f4)
+    album=$(echo "$result" | grep -o '"collectionName":"[^"]*"' | head -1 | cut -d'"' -f4)
+    year=$(echo "$result" | grep -o '"releaseDate":"[^"]*"' | head -1 | cut -d'"' -f4 | cut -c1-4)
+    genre=$(echo "$result" | grep -o '"primaryGenreName":"[^"]*"' | head -1 | cut -d'"' -f4)
+    artwork_url=$(echo "$result" | grep -o '"artworkUrl100":"[^"]*"' | head -1 | cut -d'"' -f4)
+    country=$(echo "$result" | grep -o '"country":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+    # Upscale artwork URL from 100x100 to 600x600 for better quality
+    artwork_url="${artwork_url//100x100/600x600}"
+
+    IO:debug "iTunes found: $artist - $title ($year) [$country]"
+    echo "itunes|$artist|$title|$album|$year|$genre|$artwork_url|$country"
+  else
+    IO:debug "iTunes: no results"
+    echo ""
+  fi
+}
+
+function search_musicbrainz() {
+  # Search MusicBrainz API for track metadata
+  # Input: search query (e.g., "artist name song title")
+  # Output: JSON with artist, title, album, year, genre (or empty on failure)
+  local query="$1"
+  local encoded_query result
+
+  [[ -z "$query" ]] && echo "" && return 1
+
+  # URL encode the query
+  encoded_query=$(echo "$query" | sed 's/ /%20/g')
+
+  IO:debug "MusicBrainz search: $query"
+  result=$(curl -s --max-time 10 \
+    -H "User-Agent: ytaudio/1.0 (https://github.com/pforret/ytaudio)" \
+    "https://musicbrainz.org/ws/2/recording/?query=${encoded_query}&fmt=json&limit=1")
+
+  local count
+  count=$(echo "$result" | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2)
+
+  if [[ "$count" -gt 0 ]]; then
+    # Extract metadata from MusicBrainz response
+    local artist title album year
+    artist=$(echo "$result" | grep -o '"artist-credit":\[{"name":"[^"]*"' | head -1 | sed 's/.*"name":"//' | sed 's/"$//')
+    title=$(echo "$result" | grep -o '"title":"[^"]*"' | head -1 | cut -d'"' -f4)
+    year=$(echo "$result" | grep -o '"first-release-date":"[^"]*"' | head -1 | cut -d'"' -f4 | cut -c1-4)
+    # MusicBrainz doesn't return album in recording search easily, use title as fallback
+    album=$(echo "$result" | grep -o '"releases":\[{"id":"[^"]*","status-id":"[^"]*","count":[0-9]*,"title":"[^"]*"' | head -1 | sed 's/.*"title":"//' | sed 's/"$//')
+    [[ -z "$album" ]] && album="$title"
+
+    if [[ -n "$artist" ]] && [[ -n "$title" ]]; then
+      IO:debug "MusicBrainz found: $artist - $title ($year)"
+      echo "musicbrainz|$artist|$title|$album|$year|||"
+    else
+      IO:debug "MusicBrainz: incomplete data"
+      echo ""
+    fi
+  else
+    IO:debug "MusicBrainz: no results"
+    echo ""
+  fi
+}
+
+function validate_metadata() {
+  # Check if returned metadata matches the search query
+  # Input: search_query, artist, title
+  # Output: 0 if valid, 1 if not
+  local query="$1"
+  local artist="$2"
+  local title="$3"
+
+  # Normalize strings for comparison (lowercase, remove special chars, keep spaces)
+  local query_lower artist_lower title_lower combined_result
+  query_lower=$(echo "$query" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' ' ')
+  artist_lower=$(echo "$artist" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' ' ')
+  title_lower=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' ' ')
+  combined_result="$artist_lower $title_lower"
+
+  IO:debug "Validation - query_lower='$query_lower' combined_result='$combined_result'"
+
+  # Check if query words appear in the result (artist + title)
+  local match_count=0
+  local total_words=0
+  local word
+  for word in $(echo "$query_lower" | tr " " "\n"); do
+    # Skip common words
+    [[ "$word" == "the" || "$word" == "and" || "$word" == "a" || "$word" == "an" ]] && continue
+    [[ "$word" == "feat" || "$word" == "featuring" || "$word" == "ft" ]] && continue
+    [[ ${#word} -lt 3 ]] && continue
+
+    ((total_words++))
+    if [[ "$combined_result" == *"$word"* ]]; then
+      ((match_count++))
+    fi
+  done
+
+  # Require at least 2 words to match, or all words if fewer than 2
+  local min_matches=2
+  [[ $total_words -lt 2 ]] && min_matches=$total_words
+
+  if [[ $match_count -ge $min_matches ]]; then
+    IO:debug "Metadata validation passed ($match_count/$total_words words): artist='$artist' title='$title' matches query='$query'"
+    return 0
+  else
+    IO:debug "Metadata validation failed ($match_count/$total_words words): artist='$artist' title='$title' does NOT match query='$query'"
+    return 1
+  fi
+}
+
+function lookup_metadata() {
+  # Try multiple services to find track metadata
+  # Input: search query
+  # Output: pipe-separated metadata string
+  local query="$1"
+  local result
+
+  [[ -z "$query" ]] && echo "" && return 1
+
+  IO:progress "Looking up metadata for: $query"
+
+  # Try iTunes first (faster, better for recent releases)
+  result=$(search_itunes "$query")
+  if [[ -n "$result" ]]; then
+    # Validate the result matches our query
+    local artist title
+    artist=$(echo "$result" | cut -d'|' -f2)
+    title=$(echo "$result" | cut -d'|' -f3)
+    if validate_metadata "$query" "$artist" "$title"; then
+      echo "$result"
+      return 0
+    else
+      IO:debug "iTunes result rejected: $artist - $title"
+    fi
+  fi
+
+  # Fall back to MusicBrainz
+  sleep 1  # Rate limiting
+  result=$(search_musicbrainz "$query")
+  if [[ -n "$result" ]]; then
+    # Validate the result matches our query
+    local artist title
+    artist=$(echo "$result" | cut -d'|' -f2)
+    title=$(echo "$result" | cut -d'|' -f3)
+    if validate_metadata "$query" "$artist" "$title"; then
+      echo "$result"
+      return 0
+    else
+      IO:debug "MusicBrainz result rejected: $artist - $title"
+    fi
+  fi
+
+  IO:debug "No valid metadata found for: $query"
+  echo ""
+  return 1
+}
+
+function tag_audio_file() {
+  # Embed metadata into audio file using ffmpeg
+  # Input: file_path, artist, title, album, year, genre, artwork_url, country
+  local input_file="$1"
+  local artist="$2"
+  local title="$3"
+  local album="$4"
+  local year="$5"
+  local genre="$6"
+  local artwork_url="${7:-}"
+  local country="${8:-}"
+
+  [[ ! -f "$input_file" ]] && return 1
+
+  Os:require ffmpeg
+
+  local extension="${input_file##*.}"
+  local output_file="${input_file%.*}_tagged.${extension}"
+  local artwork_file=""
+
+  IO:debug "Tagging: $input_file"
+  IO:debug "  Artist: $artist"
+  IO:debug "  Title: $title"
+  IO:debug "  Album: $album"
+  IO:debug "  Year: $year"
+  IO:debug "  Genre: $genre"
+  IO:debug "  Country: $country"
+  IO:debug "  Artwork: $artwork_url"
+
+  # Download artwork if URL provided
+  if [[ -n "$artwork_url" ]]; then
+    artwork_file=$(Os:tempfile jpg)
+    IO:debug "Downloading artwork to: $artwork_file"
+    if curl -s --max-time 10 -o "$artwork_file" "$artwork_url"; then
+      IO:debug "Artwork downloaded successfully"
+    else
+      IO:debug "Artwork download failed"
+      artwork_file=""
+    fi
+  fi
+
+  # Build ffmpeg metadata options
+  local metadata_opts=()
+  [[ -n "$artist" ]] && metadata_opts+=(-metadata "artist=$artist")
+  [[ -n "$title" ]] && metadata_opts+=(-metadata "title=$title")
+  [[ -n "$album" ]] && metadata_opts+=(-metadata "album=$album")
+  [[ -n "$year" ]] && metadata_opts+=(-metadata "date=$year")
+  [[ -n "$genre" ]] && metadata_opts+=(-metadata "genre=$genre")
+  [[ -n "$country" ]] && metadata_opts+=(-metadata "country=$country")
+
+  # Build ffmpeg command based on whether we have artwork
+  if [[ -n "$artwork_file" ]] && [[ -f "$artwork_file" ]]; then
+    # Embed artwork along with metadata
+    # For MP3: use -i for artwork, map both streams, set disposition
+    if [[ "$extension" == "mp3" ]]; then
+      ffmpeg -hide_banner -i "$input_file" -i "$artwork_file" \
+        -map 0:a -map 1:0 \
+        -c:a copy -c:v:0 mjpeg \
+        -id3v2_version 3 \
+        -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
+        "${metadata_opts[@]}" \
+        -y "$output_file" 2>> "${log_media:-/dev/null}"
+    else
+      # For other formats (WAV, FLAC, etc.) - just add metadata without artwork
+      ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>> "${log_media:-/dev/null}"
+    fi
+  else
+    # No artwork - just metadata
+    ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>> "${log_media:-/dev/null}"
+  fi
+
+  if [[ -f "$output_file" ]]; then
+    mv -f "$output_file" "$input_file"
+    IO:debug "Tagged: $input_file"
+    return 0
+  else
+    IO:debug "Tagging failed for: $input_file"
+    return 1
+  fi
+}
+
+function format_filename() {
+  # Format filename from metadata: ArtistName_SongTitle.ext
+  # Input: artist, title
+  # Output: formatted filename (without extension)
+  local artist="$1"
+  local title="$2"
+
+  # Clean up artist and title for filename
+  # Remove special characters, replace spaces with nothing (CamelCase style)
+  local clean_artist clean_title
+
+  clean_artist=$(Str:title "$artist")
+  clean_title=$(Str:title "$title")
+
+  echo "${clean_artist}_${clean_title}"
+}
+
+function generate_spectrogram() {
+  # Generate a spectrogram image from an audio file
+  # Input: audio_file path
+  # Output: creates <basename>.spectro.jpg in the same folder
+  local input_file="$1"
+  local log_file="${2:-/dev/null}"
+
+  [[ ! -f "$input_file" ]] && return 1
+
+  Os:require ffmpeg
+
+  local folder basename output_file
+  folder=$(dirname "$input_file")
+  basename=$(basename "$input_file")
+  basename="${basename%.*}"
+  output_file="$folder/${basename}.spectro.jpg"
+
+  IO:debug "Generating spectrogram: $output_file"
+  IO:log "Spectrogram: $input_file -> $output_file"
+
+  # Generate spectrogram using ffmpeg showspectrumpic filter
+  # - size: 1920x480 for a widescreen spectrogram
+  # - mode: combined (shows full frequency spectrum)
+  # - color: intensity (good contrast)
+  ffmpeg -hide_banner -i "$input_file" \
+    -lavfi "showspectrumpic=s=1920x480:mode=combined:color=intensity:scale=log" \
+    -y "$output_file" 2>> "$log_file"
+
+  if [[ -f "$output_file" ]]; then
+    IO:debug "Spectrogram created: $output_file"
+    echo "$output_file"
+    return 0
+  else
+    IO:debug "Spectrogram generation failed for: $input_file"
+    return 1
+  fi
+}
+
 #####################################################################
 ################### DO NOT MODIFY BELOW THIS LINE ###################
 #####################################################################
