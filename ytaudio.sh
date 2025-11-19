@@ -585,15 +585,17 @@ function validate_metadata() {
     fi
   done
 
-  # Require at least 2 words to match, or all words if fewer than 2
+  # Require at least 50% of words to match, with a minimum of 2
   local min_matches=2
+  local half_words=$(( (total_words + 1) / 2 ))  # Round up
+  [[ $half_words -gt $min_matches ]] && min_matches=$half_words
   [[ $total_words -lt 2 ]] && min_matches=$total_words
 
   if [[ $match_count -ge $min_matches ]]; then
-    IO:debug "Metadata validation passed ($match_count/$total_words words): artist='$artist' title='$title' matches query='$query'"
+    IO:debug "Metadata validation passed ($match_count/$total_words words, need $min_matches): artist='$artist' title='$title' matches query='$query'"
     return 0
   else
-    IO:debug "Metadata validation failed ($match_count/$total_words words): artist='$artist' title='$title' does NOT match query='$query'"
+    IO:debug "Metadata validation failed ($match_count/$total_words words, need $min_matches): artist='$artist' title='$title' does NOT match query='$query'"
     return 1
   fi
 }
