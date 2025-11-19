@@ -687,6 +687,7 @@ function tag_audio_file() {
   [[ -n "$genre" ]] && metadata_opts+=(-metadata "genre=$genre")
   [[ -n "$country" ]] && metadata_opts+=(-metadata "country=$country")
   [[ -n "$source_url" ]] && metadata_opts+=(-metadata "comment=Source: $source_url")
+  [[ -n "$source_url" ]] && metadata_opts+=(-metadata "description=$source_url")
 
   # Build ffmpeg command based on whether we have artwork
   if [[ -n "$artwork_file" ]] && [[ -f "$artwork_file" ]]; then
