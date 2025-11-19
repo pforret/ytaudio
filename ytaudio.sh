@@ -245,14 +245,24 @@ function download_to_file() {
     Os:require ffmpeg
     IO:debug "Trimming silence from ${output_download} ..."
     IO:log "Trim silence ${output_download}"
-    local output_trimmed
+    local output_trimmed duration_before duration_after
     output_trimmed="${output_download%.*}_trimmed.${FORMAT}"
+
+    # Get duration before trimming
+    duration_before=$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$output_download")
+
     ffmpeg -hide_banner -i "$output_download" \
       -af "silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse,silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse" \
       -y "$output_trimmed" 2>> "$log_media"
     if [[ -f "$output_trimmed" ]]; then
+      # Get duration after trimming
+      duration_after=$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$output_trimmed")
+
+      if [[ "$duration_before" != "$duration_after" ]]; then
+        IO:debug "Trimmed: ${duration_before}s => ${duration_after}s"
+        IO:log "Trimmed: ${duration_before}s => ${duration_after}s"
+      fi
       mv -f "$output_trimmed" "$output_download"
-      IO:debug "Trimmed ${output_download}"
     fi
     final_output="$output_download"
   fi
