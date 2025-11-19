@@ -732,7 +732,12 @@ function format_filename() {
   local clean_artist clean_title
 
   clean_artist=$(Str:title "$artist")
+  IO:debug "Clean Artist: $clean_artist"
   clean_title=$(Str:title "$title")
+  IO:debug "Clean Title : $clean_title"
+
+  # Remove 'Mix' or 'Mixed' at the end of the title
+  clean_title=$(echo "$clean_title" | sed 's/Mixed$//' | sed 's/Mix$//')
 
   echo "${clean_artist}_${clean_title}"
 }
