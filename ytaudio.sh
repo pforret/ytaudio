@@ -49,12 +49,12 @@ flag|h|help|show usage
 flag|q|quiet|no output
 flag|v|verbose|also show debug messages
 flag|f|force|do not ask for confirmation (always yes)
-flag|N|NORMALIZE|normalize output audio
-flag|M|MP3|transcode to high-quality MP3
 flag|C|CLEAN|cleanup the output file name
-flag|T|TRIM|trim silence from beginning/end
 flag|I|INFO|lookup metadata and tag file
+flag|M|MP3|transcode to high-quality MP3
+flag|N|NORMALIZE|normalize output audio
 flag|P|SPECTRO|generate spectrogram image
+flag|T|TRIM|trim silence from beginning/end
 option|l|log_dir|folder for log files |log
 option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
@@ -62,6 +62,8 @@ option|F|FORMAT|output audio format|wav
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
+option|X|MAX|max duration in seconds|480
+option|Y|MIN|min duration in seconds|180
 choice|1|action|action to perform|get,search,loop,parallel,check,env,update
 param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
@@ -218,6 +220,7 @@ function download_to_file() {
     --cache-dir "$tmp_dir"
     --audio-format "$FORMAT"
     --audio-quality "$QUALITY"
+    --match-filter "duration > $MIN & duration < $MAX"
     --no-progress
     --console-title
     -x
@@ -382,7 +385,7 @@ function download_to_file() {
 
       # Tag the audio file
       IO:progress "Tagging $(basename "$final_output")          "
-      tag_audio_file "$final_output" "$meta_artist" "$meta_title" "$meta_album" "$meta_year" "$meta_genre" "$meta_artwork" "$meta_country"
+      tag_audio_file "$final_output" "$meta_artist" "$meta_title" "$meta_album" "$meta_year" "$meta_genre" "$meta_artwork" "$meta_country" "$url"
 
       # Rename file based on metadata
       local new_filename folder extension
@@ -634,7 +637,7 @@ function lookup_metadata() {
 
 function tag_audio_file() {
   # Embed metadata into audio file using ffmpeg
-  # Input: file_path, artist, title, album, year, genre, artwork_url, country
+  # Input: file_path, artist, title, album, year, genre, artwork_url, country, source_url
   local input_file="$1"
   local artist="$2"
   local title="$3"
@@ -643,6 +646,7 @@ function tag_audio_file() {
   local genre="$6"
   local artwork_url="${7:-}"
   local country="${8:-}"
+  local source_url="${9:-}"
 
   [[ ! -f "$input_file" ]] && return 1
 
@@ -660,6 +664,7 @@ function tag_audio_file() {
   IO:debug "  Genre: $genre"
   IO:debug "  Country: $country"
   IO:debug "  Artwork: $artwork_url"
+  IO:debug "  Source: $source_url"
 
   # Download artwork if URL provided
   if [[ -n "$artwork_url" ]]; then
@@ -681,6 +686,7 @@ function tag_audio_file() {
   [[ -n "$year" ]] && metadata_opts+=(-metadata "date=$year")
   [[ -n "$genre" ]] && metadata_opts+=(-metadata "genre=$genre")
   [[ -n "$country" ]] && metadata_opts+=(-metadata "country=$country")
+  [[ -n "$source_url" ]] && metadata_opts+=(-metadata "comment=Source: $source_url")
 
   # Build ffmpeg command based on whether we have artwork
   if [[ -n "$artwork_file" ]] && [[ -f "$artwork_file" ]]; then
