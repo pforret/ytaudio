@@ -59,6 +59,7 @@ option|l|log_dir|folder for log files |log
 option|t|tmp_dir|folder for temp files|tmp
 option|D|DOWNLOADER|download binary|yt-dlp
 option|F|FORMAT|output audio format|wav
+option|G|GENRE|force mp3 genre|
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
@@ -667,6 +668,7 @@ function tag_audio_file() {
   local extension="${input_file##*.}"
   local output_file="${input_file%.*}_tagged.${extension}"
   local artwork_file=""
+  [[ -n "$GENRE" ]] && genre="$GENRE"
 
   IO:debug "Tagging: $input_file"
   IO:debug "  Artist: $artist"

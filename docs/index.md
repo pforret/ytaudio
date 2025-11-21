@@ -16,30 +16,32 @@ Built with the bashew framework, it's a command-line tool with multiple action m
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.5.0 (Nov 19 00:14:26 2025)
+Version : v1.5.6 (Nov 21 07:44:41 2025)
 Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
-Usage   : ytaudio [-h] [-q] [-v] [-f] [-N] [-M] [-C] [-T] [-I] [-P] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] <action> <input?>
+Usage   : ytaudio [-h] [-q] [-v] [-f] [-C] [-I] [-M] [-N] [-P] [-T] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-G <GENRE>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] [-X <MAX>] [-Y <MIN>] <action> <input?>
 Flags, options and parameters:
     -h|--help        : [flag] show usage [default: off]
     -q|--quiet       : [flag] no output [default: off]
     -v|--verbose     : [flag] also show debug messages [default: off]
     -f|--force       : [flag] do not ask for confirmation (always yes) [default: off]
-    -N|--NORMALIZE   : [flag] normalize output audio [default: off]
-    -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
     -C|--CLEAN       : [flag] cleanup the output file name [default: off]
-    -T|--TRIM        : [flag] trim silence from beginning/end [default: off]
     -I|--INFO        : [flag] lookup metadata and tag file [default: off]
+    -M|--MP3         : [flag] transcode to high-quality MP3 [default: off]
+    -N|--NORMALIZE   : [flag] normalize output audio [default: off]
     -P|--SPECTRO     : [flag] generate spectrogram image [default: off]
+    -T|--TRIM        : [flag] trim silence from beginning/end [default: off]
     -l|--log_dir <?> : [option] folder for log files   [default: log]
     -t|--tmp_dir <?> : [option] folder for temp files  [default: tmp]
     -D|--DOWNLOADER <?>: [option] download binary  [default: yt-dlp]
     -F|--FORMAT <?>  : [option] output audio format  [default: wav]
+    -G|--GENRE <?>   : [option] force mp3 genre
     -O|--OUT_DIR <?> : [option] output folder  [default: .]
     -Q|--QUALITY <?> : [option] audio quality  [default: 1]
     -S|--SPLITTER <?>: [option] stem splitting (full/voice)
+    -X|--MAX <?>     : [option] max duration in seconds  [default: 480]
+    -Y|--MIN <?>     : [option] min duration in seconds  [default: 180]
     <action>         : [choice] action to perform  [options: get,search,loop,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
-                                  @github.com:pforret/ytaudio.git                                             
 ### TIPS & EXAMPLES
 * use ytaudio get to download 1 URL
   ytaudio get https://www.youtube.com/watch?v=mMfxI3r_LyA
