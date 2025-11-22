@@ -116,7 +116,7 @@ Script:main() {
     IO:print "Copy/paste the tracklist"
 
     today=$(date '+%Y-%m-%d')
-    clean_list="$OUT_DIR/tracklist.$today.txt"
+    clean_list="$OUT_DIR/tracklist.$today.$$.txt"
     IO:debug "Clean track list in $clean_list"
 
     cleanup_tracklist |
@@ -715,16 +715,18 @@ function tag_audio_file() {
   IO:debug "  Artwork: $artwork_url"
   IO:debug "  Source: $source_url"
 
+  artwork_file=""
   # Download artwork if URL provided
   if [[ -n "$artwork_url" ]]; then
     artwork_file=$(Os:tempfile jpg)
     IO:debug "Downloading artwork to: $artwork_file"
     if curl -s --max-time 10 -o "$artwork_file" "$artwork_url"; then
       IO:debug "Artwork downloaded successfully"
-    else
-      IO:debug "Artwork download failed"
-      artwork_file=""
     fi
+  else
+    artwork_file=$(Os:tempfile jpg)
+    splashmark splashmark -w 500 -c 500 -3 " " -e dark,pixel,grain url -i "$title" -k "$artist" url "https://cataas.com/cat" "$artwork_file"
+    IO:debug "Random Artwork generated successfully"
   fi
 
   # Build ffmpeg metadata options
