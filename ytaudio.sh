@@ -886,6 +886,7 @@ function cleanup_tracklist() {
     # also remove strings between [] at the end of the line
     # e.g.  [Groove Culture] or [MONOSIDE]
     gsub(/\[[^\]]*\][ \t]*$/, "", $0);
+    gsub(/\([^\)]*\)[ \t]*$/, "", $0);
 
     # Remove common special characters used in titles
     gsub(/[\(\),.]/, "", $0);
