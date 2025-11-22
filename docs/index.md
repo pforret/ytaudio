@@ -16,7 +16,7 @@ Built with the bashew framework, it's a command-line tool with multiple action m
 
 ```
 Program : ytaudio  by peter@forret.com
-Version : v1.5.6 (Nov 21 07:44:41 2025)
+Version : v1.6.0 (Nov 22 09:53:46 2025)
 Purpose : Download audio (YouTube/Soundcloud/...) and split into stems
 Usage   : ytaudio [-h] [-q] [-v] [-f] [-C] [-I] [-M] [-N] [-P] [-T] [-l <log_dir>] [-t <tmp_dir>] [-D <DOWNLOADER>] [-F <FORMAT>] [-G <GENRE>] [-O <OUT_DIR>] [-Q <QUALITY>] [-S <SPLITTER>] [-X <MAX>] [-Y <MIN>] <action> <input?>
 Flags, options and parameters:
@@ -40,8 +40,9 @@ Flags, options and parameters:
     -S|--SPLITTER <?>: [option] stem splitting (full/voice)
     -X|--MAX <?>     : [option] max duration in seconds  [default: 480]
     -Y|--MIN <?>     : [option] min duration in seconds  [default: 180]
-    <action>         : [choice] action to perform  [options: get,search,loop,parallel,check,env,update]
+    <action>         : [choice] action to perform  [options: get,search,loop,tracklist,trackfilter,parallel,check,env,update]
     <input>          : [parameter] input URL (optional)
+
 ### TIPS & EXAMPLES
 * use ytaudio get to download 1 URL
   ytaudio get https://www.youtube.com/watch?v=mMfxI3r_LyA
@@ -49,6 +50,10 @@ Flags, options and parameters:
   ytaudio search "Modjo - Lady"
 * use ytaudio loop to keep downloading one URL after the other
   ytaudio loop
+* use ytaudio tracklist to receive a whole tracklist and download one by one
+  cat tracklist.txt | ytaudio tracklist
+* use ytaudio tracklist to receive a whole tracklist and clean it up
+  cat tracklist.txt | ytaudio trackfilter
 * use ytaudio parallel to download URLs simultaneously
   ytaudio parallel
 * use ytaudio check to check if this script is ready to execute and what values the options/flags are
@@ -57,6 +62,7 @@ Flags, options and parameters:
   ytaudio env > .env
 * use ytaudio update to update to the latest version
   ytaudio update
+* >>> bash script created with pforret/bashew
 ```
 
 ## ⚡️ Examples
