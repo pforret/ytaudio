@@ -116,6 +116,7 @@ Script:main() {
     IO:print "Copy/paste the tracklist"
 
     today=$(date '+%Y-%m-%d')
+    [[ ! -d "$OUT_DIR" ]] && mkdir -p "$OUT_DIR"
     clean_list="$OUT_DIR/tracklist.$today.$$.txt"
     IO:debug "Clean track list in $clean_list"
 
@@ -272,7 +273,11 @@ function download_to_file() {
     tail -1 |
     cut -f3- -d' ')
 
-  [[ -z "$output_download" ]] && IO:die "No output file"
+  if [[ -z "$output_download" ]] ; then
+     IO:warning "No Youtube video could be downloaded"
+     echo ""
+     return 1
+  fi
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
   final_output="$output_download"
 
