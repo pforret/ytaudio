@@ -65,7 +65,7 @@ option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
 option|X|MAX|max duration in seconds|480
 option|Y|MIN|min duration in seconds|180
-choice|1|action|action to perform|get,search,loop,parallel,check,env,update
+choice|1|action|action to perform|get,search,loop,tracklist,trackfilter,parallel,check,env,update
 param|?|input|input URL
 " -v -e '^#' -e '^\s*$'
 }
@@ -83,17 +83,17 @@ Script:main() {
   action=$(Str:lower "$action")
   case $action in
   get)
-  #TIP: use «$script_prefix get» to download 1 URL
-  #TIP:> $script_prefix get https://www.youtube.com/watch?v=mMfxI3r_LyA
-  # shellcheck disable=SC2154
+    #TIP: use «$script_prefix get» to download 1 URL
+    #TIP:> $script_prefix get https://www.youtube.com/watch?v=mMfxI3r_LyA
+    # shellcheck disable=SC2154
     download_to_file "$input"
     ;;
 
   search)
-  #TIP: use «$script_prefix search» to download 1 URL
-  #TIP:> $script_prefix search "Modjo - Lady"
+    #TIP: use «$script_prefix search» to download 1 URL
+    #TIP:> $script_prefix search "Modjo - Lady"
     local url
-  # shellcheck disable=SC2154
+    # shellcheck disable=SC2154
     url="$(search_in_youtube "$input")"
     download_to_file "$url" "$input"
     ;;
@@ -105,8 +105,42 @@ Script:main() {
     IO:print "Copy/paste a URL and press <return> to start the download (one at a time)"
     while read -r url; do
       [[ -z "$url" ]] && IO:success "Program finished!" && Script:exit
-      download_to_file "$url"
+      download_to_file "$url" "$input"
     done
+    ;;
+
+  tracklist)
+    #TIP: use «$script_prefix tracklist» to receive a whole tracklist and download one by one
+    #TIP:> cat tracklist.txt | $script_prefix tracklist
+    local url today clean_list url line
+    IO:print "Copy/paste the tracklist"
+
+    today=$(date '+%Y-%m-%d')
+    clean_list="$OUT_DIR/tracklist.$today.txt"
+    IO:debug "Clean track list in $clean_list"
+
+    cleanup_tracklist |
+      tee "$clean_list" |
+      while read -r line; do
+        IO:announce "Look for: '$line'"
+        [[ -z "$line" ]] && IO:success "Program finished!" && Script:exit
+        url="$(search_in_youtube "$line" < /dev/null)"
+        IO:debug "Found URL: $url"
+        [[ -n "$url" ]] && download_to_file "$url" "$line" < /dev/null
+      done
+    ;;
+
+  trackfilter)
+    #TIP: use «$script_prefix tracklist» to receive a whole tracklist and clean it up
+    #TIP:> cat tracklist.txt | $script_prefix trackfilter
+    local url
+    IO:print "Copy/paste the tracklist"
+
+    cleanup_tracklist |
+      while read -r input; do
+        [[ -z "$input" ]] && IO:success "Program finished!" && Script:exit
+        IO:success "Look for: $input"
+      done
     ;;
 
   parallel)
@@ -150,7 +184,7 @@ Script:main() {
 ## Put your helper scripts here
 #####################################################################
 
-function search_in_youtube(){
+function search_in_youtube() {
   # input:  query string like: "Artist - Title"
   # output: best matching YouTube video URL (empty on failure)
   # uses:   yt-dlp via $DOWNLOADER
@@ -173,25 +207,25 @@ function search_in_youtube(){
   log_media="$log_dir/ytaudio.youtube.com.$uniq.log"
 
   IO:debug "Search YouTube for: $query"
-  IO:log   "SEARCH: $query"
+  IO:log "SEARCH: $query"
 
   # Primary attempt: ytsearch1 (best match)
   # We print the webpage URL; --no-playlist to avoid channel/playlist URLs
   url=$("$DOWNLOADER" \
-        --no-warnings \
-        --no-playlist \
-        --default-search "ytsearch" \
-        --print "%(webpage_url)s" \
-        "ytsearch1:$query" 2>>"$log_media" | head -n1 | tr -d '\r')
+    --no-warnings \
+    --no-playlist \
+    --default-search "ytsearch" \
+    --print "%(webpage_url)s" \
+    "ytsearch1:$query" 2>>"$log_media" | head -n1 | tr -d '\r')
 
   # Fallback: try top results and pick the first valid URL
   if [[ -z "$url" ]]; then
     url=$("$DOWNLOADER" \
-          --no-warnings \
-          --no-playlist \
-          --default-search "ytsearch" \
-          --print "%(webpage_url)s" \
-          "ytsearch5:$query" 2>>"$log_media" | grep -E '^https?://[^ ]+' | head -n1 | tr -d '\r')
+      --no-warnings \
+      --no-playlist \
+      --default-search "ytsearch" \
+      --print "%(webpage_url)s" \
+      "ytsearch5:$query" 2>>"$log_media" | grep -E '^https?://[^ ]+' | head -n1 | tr -d '\r')
   fi
 
   if [[ -z "$url" ]]; then
@@ -206,7 +240,8 @@ function search_in_youtube(){
 
 function download_to_file() {
   local url="$1"
-  local search_query="${2:-}"  # Optional: original search query for metadata lookup
+  local search_query="${2:-}" # Optional: original search query for metadata lookup
+  IO:debug "download_to_file: '$url' '$search_query'"
   local output_download
   local output_root
   local uniq
@@ -228,11 +263,11 @@ function download_to_file() {
     -o "$OUT_DIR/%(title)s.%(ext)s")
 
   IO:progress "Downloading $url          "
-  final_output=""
+  local final_output=""
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
   IO:log "$DOWNLOADER $url"
-  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> $log_media |
+  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>>$log_media |
     grep "Destination:" |
     tail -1 |
     cut -f3- -d' ')
@@ -241,7 +276,7 @@ function download_to_file() {
   [[ ! -f "$output_download" ]] && IO:die "Output file [$output_download] not found"
   final_output="$output_download"
 
-  if [[ "$TRIM" -gt 0 ]] ; then
+  if [[ "$TRIM" -gt 0 ]]; then
     IO:progress "Trim silence $(basename "$final_output")          "
     Os:require ffmpeg
     IO:debug "Trimming silence from ${output_download} ..."
@@ -254,7 +289,7 @@ function download_to_file() {
 
     ffmpeg -hide_banner -i "$output_download" \
       -af "silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse,silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse" \
-      -y "$output_trimmed" 2>> "$log_media"
+      -y "$output_trimmed" 2>>"$log_media"
     if [[ -f "$output_trimmed" ]]; then
       # Get duration after trimming
       duration_after=$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$output_trimmed")
@@ -268,7 +303,7 @@ function download_to_file() {
     final_output="$output_download"
   fi
 
-  if [[ "$NORMALIZE" -gt 0 ]] ; then
+  if [[ "$NORMALIZE" -gt 0 ]]; then
     IO:progress "Normalize $(basename "$final_output")          "
     local loudness_before loudness_after
     ## ffmpeg -i "$audio_file" -af loudnorm=I=-14:LRA=11:TP=-1.5 -y "normalized_"$audio_file
@@ -278,9 +313,9 @@ function download_to_file() {
     IO:log "Normalize ${output_download} (-14 LUFS)"
     local output_normalized
     output_normalized="${output_download%.*}_normalized.${FORMAT}"
-    ffmpeg -hide_banner  -i "$output_download" -af "loudnorm=I=-14:LRA=11:TP=-1.5" -y "$output_normalized" 2>> "$log_media"
+    ffmpeg -hide_banner -i "$output_download" -af "loudnorm=I=-14:LRA=11:TP=-1.5" -y "$output_normalized" 2>>"$log_media"
     loudness_after="$(measure_volume "$output_normalized")"
-    if [[ $loudness_before != $loudness_after ]]; then
+    if [[ "$loudness_before" != "$loudness_after" ]]; then
       IO:debug "Loudness corrected: $loudness_before => $loudness_after"
       IO:log "Loudness corrected: $loudness_before => $loudness_after"
       mv -f "$output_normalized" "$output_download"
@@ -324,7 +359,7 @@ function download_to_file() {
 
   fi
 
-  if [[ "$MP3" -gt 0 ]] ; then
+  if [[ "$MP3" -gt 0 ]]; then
     IO:progress "Transcode $(basename "$final_output")          "
     # ffmpeg -i "normalized_"$audio_file -b:a 320k "dj_ready_$(basename "$url").mp3"
     local input_compress="$output_download"
@@ -332,13 +367,13 @@ function download_to_file() {
     local output_compress="${input_compress%.wav}.mp3"
     IO:debug "Transcoding ${input_compress}"
     IO:log "ffmpeg $input_compress -> $output_compress"
-    ffmpeg -i "$input_compress" -b:a 320k -y "$output_compress" 2>> "$log_media"
+    ffmpeg -i "$input_compress" -b:a 320k -y "$output_compress" 2>>"$log_media"
     [[ -f "$output_compress" ]] && rm "$input_compress"
     IO:debug "Transcoded ${output_compress}"
     final_output="$output_compress"
   fi
 
-  if [[ "$CLEAN" -gt 0 ]] ; then
+  if [[ "$CLEAN" -gt 0 ]]; then
     IO:progress "Clean $(basename "$final_output")          "
     local folder old_name new_name
     folder="$(dirname "$final_output")"
@@ -359,14 +394,14 @@ function download_to_file() {
         print;
         }')"
     IO:debug "Cleanup: '$old_name' => '$new_name'"
-    if [[ "$new_name" != "$old_name" ]] ; then
+    if [[ "$new_name" != "$old_name" ]]; then
       IO:log "Cleanup: '$old_name' => '$new_name'"
       mv "$folder/$old_name" "$folder/$new_name"
       final_output="$folder/$new_name"
     fi
   fi
 
-  if [[ "$INFO" -gt 0 ]] ; then
+  if [[ "$INFO" -gt 0 ]]; then
     IO:progress "Lookup metadata $(basename "$final_output")          "
     local metadata_result
     # Use provided search query, or extract from filename as fallback
@@ -418,7 +453,7 @@ function download_to_file() {
     fi
   fi
 
-  if [[ "$SPECTRO" -gt 0 ]] ; then
+  if [[ "$SPECTRO" -gt 0 ]]; then
     IO:progress "Generate spectrogram $(basename "$final_output")          "
     local spectro_file
     spectro_file=$(generate_spectrogram "$final_output" "$log_media")
@@ -433,11 +468,11 @@ function download_to_file() {
 function measure_volume() {
   local volume_r128 volume_db
   volume_r128=$(ffmpeg -hide_banner -i "$1" -filter:a "ebur128=framelog=quiet" -f null - 2>&1 | awk '/I:/ { print $2,$3}')
-  volume_db=$(ffmpeg -hide_banner -i "$1" -filter:a "volumedetect"           -f null - 2>&1 | awk '/mean_volume/ {print $5,$6}')
+  volume_db=$(ffmpeg -hide_banner -i "$1" -filter:a "volumedetect" -f null - 2>&1 | awk '/mean_volume/ {print $5,$6}')
   echo "{ 'volume_r128': $volume_r128, 'mean_volume': $volume_db }"
 }
 
-function parse_host(){
+function parse_host() {
   # input: https://www.youtube.com/watch?v=fKKNPLowteY
   # output: www.youtube.com
   #
@@ -588,7 +623,7 @@ function validate_metadata() {
 
   # Require at least 50% of words to match, with a minimum of 2
   local min_matches=2
-  local half_words=$(( (total_words + 1) / 2 ))  # Round up
+  local half_words=$(((total_words + 1) / 2)) # Round up
   [[ $half_words -gt $min_matches ]] && min_matches=$half_words
   [[ $total_words -lt 2 ]] && min_matches=$total_words
 
@@ -628,7 +663,7 @@ function lookup_metadata() {
   fi
 
   # Fall back to MusicBrainz
-  sleep 1  # Rate limiting
+  sleep 1 # Rate limiting
   result=$(search_musicbrainz "$query")
   if [[ -n "$result" ]]; then
     # Validate the result matches our query
@@ -714,15 +749,17 @@ function tag_audio_file() {
         -id3v2_version 3 \
         -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
         "${metadata_opts[@]}" \
-        -y "$output_file" 2>> "${log_media:-/dev/null}"
+        -y "$output_file" 2>>"${log_media:-/dev/null}"
     else
       # For other formats (WAV, FLAC, etc.) - just add metadata without artwork
-      ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>> "${log_media:-/dev/null}"
+      ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>>"${log_media:-/dev/null}"
     fi
   else
     # No artwork - just metadata
-    ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>> "${log_media:-/dev/null}"
+    ffmpeg -hide_banner -i "$input_file" -c copy "${metadata_opts[@]}" -y "$output_file" 2>>"${log_media:-/dev/null}"
   fi
+
+  [[ -f "$artwork_file" ]] && rm "$artwork_file"
 
   if [[ -f "$output_file" ]]; then
     mv -f "$output_file" "$input_file"
@@ -782,7 +819,7 @@ function generate_spectrogram() {
   # - color: intensity (good contrast)
   ffmpeg -hide_banner -i "$input_file" \
     -lavfi "showspectrumpic=s=1920x480:mode=combined:color=intensity:scale=log" \
-    -y "$output_file" 2>> "$log_file"
+    -y "$output_file" 2>>"$log_file"
 
   if [[ -f "$output_file" ]]; then
     IO:debug "Spectrogram created: $output_file"
@@ -792,6 +829,65 @@ function generate_spectrogram() {
     IO:debug "Spectrogram generation failed for: $input_file"
     return 1
   fi
+}
+
+function cleanup_tracklist() {
+  #  Input:
+  #  1) 00:00 Saison - We Are The Machines ‪@nofussrecords6609‬
+  #  2) 03:28 Kendricks (Saison Remix) - Local Options ‪@nofussrecords6609‬
+  #  3) 08:36 Daniel Haze - Acid Nights (Don't Let Me Go) ‪@CandyFlipRecords‬
+  #  4) 13:12 Queens - Romy Black, Husky ‪@nofussrecords6609‬
+  #  5) 17:58 Mi Casa - Man Go Funk, Venessa Jackson ‪@DobarHouse‬
+  #  6) 22:24 Heat Up The House - Mainline ‪@PleasedAsPunchMusic‬
+  #  7) 26:22 Clap Your Hands - ColorJaxx ‪@nofussrecords6609‬
+  #  8) 31:04 Eridu - Je M'en Fous ‪@Flipsight‬
+  #  9) 35:17 Vertigini - Soul Thing ‪@dobrovinyl‬
+  #  10) 40:00 Tom Wigley - Never Find Me (FT Edit) ‪@55_MUSIC‬
+  #
+  #  Output:
+  #  Saison We Are The Machines
+  #  Kendricks Saison Remix Local Options
+  #  Daniel Haze Acid Nights Dont Let Me Go
+  #  Queens Romy Black, Husky
+  #  Mi Casa Man Go Funk, Venessa Jackson
+  #  Heat Up The House Mainline
+  #  Clap Your Hands ColorJaxx
+  #  Eridu Je Men Fous
+  #  Vertigini Soul Thing
+  #  Tom Wigley Never Find Me FT Edit
+
+  awk '
+  {
+    # Remove leading/trailing whitespace
+    gsub(/^[ \t\r\n]+/, "", $0);
+    gsub(/[ \t\r\n]+$/, "", $0);
+
+    # Skip empty lines
+    if (length($0) == 0) next;
+
+    # Remove numbering at the beginning (e.g., "1)", "10)")
+    gsub(/^[0-9]+\)[ \t]*/, "", $0);
+
+    # Remove timestamps (e.g., "00:00", "03:28", "1:23:45")
+    gsub(/^[0-9]+:[0-9]+(:[0-9]+)?[ \t]*/, "", $0);
+
+    # Remove YouTube handles (e.g., "@nofussrecords6609", "‪@nofussrecords6609‬")
+    gsub(/[‪‬]*@[a-zA-Z0-9_]+[‪‬]*/, "", $0);
+
+    # Remove common special characters used in titles
+    gsub(/[\(\),.]/, "", $0);
+
+    # Clean up apostrophes
+    gsub(/[''ʼ]/, "", $0);
+
+    # Remove extra whitespace
+    gsub(/[ \t]+/, " ", $0);
+    gsub(/^[ \t]+/, "", $0);
+    gsub(/[ \t]+$/, "", $0);
+
+    # Print cleaned line if not empty
+    if (length($0) > 0) print $0;
+  }' | tr -d "'"
 }
 
 #####################################################################
