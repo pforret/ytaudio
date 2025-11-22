@@ -274,7 +274,7 @@ function download_to_file() {
     cut -f3- -d' ')
 
   if [[ -z "$output_download" ]] ; then
-     IO:warning "No Youtube video could be downloaded"
+     IO:alert "No Youtube video could be downloaded"
      echo ""
      return 1
   fi
