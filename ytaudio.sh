@@ -267,7 +267,7 @@ function download_to_file() {
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
   IO:log "$DOWNLOADER $url"
-  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>>$log_media |
+  output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> "$log_media" |
     grep "Destination:" |
     tail -1 |
     cut -f3- -d' ')
@@ -555,7 +555,7 @@ function search_musicbrainz() {
   [[ -z "$query" ]] && echo "" && return 1
 
   # URL encode the query
-  encoded_query=$(echo "$query" | sed 's/ /%20/g')
+  encoded_query="${query// /%20}"
 
   IO:debug "MusicBrainz search: $query"
   result=$(curl -s --max-time 10 \
