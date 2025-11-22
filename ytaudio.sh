@@ -730,7 +730,7 @@ function tag_audio_file() {
     fi
   else
     artwork_file=$(Os:tempfile jpg)
-    splashmark splashmark -w 500 -c 500 -3 " " -e dark,pixel,grain url -i "$title" -k "$artist" url "https://cataas.com/cat" "$artwork_file"
+    splashmark -w 500 -c 500 -3 " " -e dark,pixel,grain -i "$title" -k "$artist" url "https://cataas.com/cat" "$artwork_file"
     IO:debug "Random Artwork generated successfully"
   fi
 
