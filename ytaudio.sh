@@ -436,7 +436,7 @@ function download_to_file() {
 
       # Tag the audio file
       IO:progress "Tagging $(basename "$final_output")          "
-      tag_audio_file "$final_output" "$meta_artist" "$meta_title" "$meta_album" "$meta_year" "$meta_genre" "$meta_artwork" "$meta_country" "$url"
+      tag_audio_file "$final_output" "$meta_artist" "$meta_title" "$meta_album" "$meta_year" "$meta_genre" "$meta_artwork" "$meta_country" "$url" "$search_query"
 
       # Rename file based on metadata
       local new_filename folder extension
@@ -690,7 +690,7 @@ function lookup_metadata() {
 
 function tag_audio_file() {
   # Embed metadata into audio file using ffmpeg
-  # Input: file_path, artist, title, album, year, genre, artwork_url, country, source_url
+  # Input: file_path, artist, title, album, year, genre, artwork_url, country, source_url, search_query
   local input_file="$1"
   local artist="$2"
   local title="$3"
@@ -700,6 +700,7 @@ function tag_audio_file() {
   local artwork_url="${7:-}"
   local country="${8:-}"
   local source_url="${9:-}"
+  local search_query="${10:-}"
 
   [[ ! -f "$input_file" ]] && return 1
 
@@ -719,6 +720,7 @@ function tag_audio_file() {
   IO:debug "  Country: $country"
   IO:debug "  Artwork: $artwork_url"
   IO:debug "  Source: $source_url"
+  IO:debug "  Search: $search_query"
 
   artwork_file=""
   # Download artwork if URL provided
@@ -743,7 +745,7 @@ function tag_audio_file() {
   [[ -n "$genre" ]] && metadata_opts+=(-metadata "genre=$genre")
   [[ -n "$country" ]] && metadata_opts+=(-metadata "country=$country")
   [[ -n "$source_url" ]] && metadata_opts+=(-metadata "comment=Source: $source_url")
-  [[ -n "$source_url" ]] && metadata_opts+=(-metadata "description=$source_url")
+  [[ -n "$search_query" ]] && metadata_opts+=(-metadata "description=$search_query")
 
   # Build ffmpeg command based on whether we have artwork
   if [[ -n "$artwork_file" ]] && [[ -f "$artwork_file" ]]; then
@@ -881,16 +883,15 @@ function cleanup_tracklist() {
     # Remove YouTube handles (e.g., "@nofussrecords6609", "‪@nofussrecords6609‬")
     gsub(/[‪‬]*@[a-zA-Z0-9_]+[‪‬]*/, "", $0);
 
+    # also remove strings between [] at the end of the line
+    # e.g.  [Groove Culture] or [MONOSIDE]
+    gsub(/\[[^\]]*\][ \t]*$/, "", $0);
+
     # Remove common special characters used in titles
     gsub(/[\(\),.]/, "", $0);
 
     # Clean up apostrophes
     gsub(/[''ʼ]/, "", $0);
-
-    # Remove extra whitespace
-    gsub(/[ \t]+/, " ", $0);
-    gsub(/^[ \t]+/, "", $0);
-    gsub(/[ \t]+$/, "", $0);
 
     max_length=60
     # limit one line to max_length chars, but dont cut words in the middle
@@ -904,6 +905,10 @@ function cleanup_tracklist() {
                 $0 = truncated;
             }
         }
+        # Remove extra whitespace
+        gsub(/[ \t]+/, " ", $0);
+        gsub(/^[ \t]+/, "", $0);
+        gsub(/[ \t]+$/, "", $0);
         print $0;
     }
   }' | tr -d "'"
