@@ -63,7 +63,7 @@ option|G|GENRE|force mp3 genre|
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
-option|X|MAX|max duration in seconds|480
+option|X|MAX|max duration in seconds|600
 option|Y|MIN|min duration in seconds|180
 choice|1|action|action to perform|get,search,loop,tracklist,trackfilter,parallel,check,env,update
 param|?|input|input URL
