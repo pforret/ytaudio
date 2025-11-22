@@ -887,8 +887,20 @@ function cleanup_tracklist() {
     gsub(/^[ \t]+/, "", $0);
     gsub(/[ \t]+$/, "", $0);
 
-    # Print cleaned line if not empty
-    if (length($0) > 0) print $0;
+    max_length=60
+    # limit one line to max_length chars, but dont cut words in the middle
+    # to avoid: Fahy & Sanchez - Disco Queen (Monkey Wrench Remix) - Unofficial Flavour Trip Edit (Alimish)
+    if (length($0) > 0) {
+        if (length($0) > max_length) {
+            truncated = substr($0, 1, max_length);
+            if (match(truncated, /.*[ ]/)) {
+                $0 = substr(truncated, 1, RLENGTH - 1);
+            } else {
+                $0 = truncated;
+            }
+        }
+        print $0;
+    }
   }' | tr -d "'"
 }
 
