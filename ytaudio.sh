@@ -135,12 +135,12 @@ Script:main() {
     #TIP: use «$script_prefix tracklist» to receive a whole tracklist and clean it up
     #TIP:> cat tracklist.txt | $script_prefix trackfilter
     local url
-    IO:print "Copy/paste the tracklist"
+    [[ -t 0 ]] && IO:print "Copy/paste the tracklist" >&2
 
     cleanup_tracklist |
       while read -r input; do
-        [[ -z "$input" ]] && IO:success "Program finished!" && Script:exit
-        IO:success "Look for: $input"
+        [[ -z "$input" ]] && break
+        echo "$input"
       done
     ;;
 
@@ -261,7 +261,7 @@ function download_to_file() {
     --no-progress
     --console-title
     -x
-    -o "$OUT_DIR/%(title)s.%(ext)s")
+    -o "$tmp_dir/%(title)s.%(ext)s")
 
   IO:progress "Downloading $url          "
   local final_output=""
@@ -344,13 +344,13 @@ function download_to_file() {
     #
 
     full)
-      demucs -o "$OUT_DIR" "$output_download" &>>"$log_file"
-      find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
+      demucs -o "$tmp_dir" "$output_download" &>>"$log_file"
+      find "$tmp_dir" -name "*.wav" | grep "$output_root/"
       ;;
 
     voice)
-      demucs -o "$OUT_DIR" --two-stems voice "$output_download" &>>"$log_file"
-      find "$OUT_DIR" -name "*.wav" | grep "$output_root/"
+      demucs -o "$tmp_dir" --two-stems voice "$output_download" &>>"$log_file"
+      find "$tmp_dir" -name "*.wav" | grep "$output_root/"
       ;;
 
     none)
@@ -464,6 +464,36 @@ function download_to_file() {
     spectro_file=$(generate_spectrogram "$final_output" "$log_media")
     if [[ -n "$spectro_file" ]]; then
       IO:debug "Spectrogram saved: $spectro_file"
+    fi
+  fi
+
+  # Move final output from tmp_dir to OUT_DIR
+  if [[ -f "$final_output" ]]; then
+    local final_basename final_destination
+    final_basename=$(basename "$final_output")
+    final_destination="$OUT_DIR/$final_basename"
+    IO:debug "Moving final output: $final_output -> $final_destination"
+    mv "$final_output" "$final_destination"
+    final_output="$final_destination"
+
+    # Also move spectrogram if it exists
+    local spectro_basename spectro_source spectro_dest
+    spectro_basename="${final_basename%.*}.spectro.jpg"
+    spectro_source="$tmp_dir/$spectro_basename"
+    spectro_dest="$OUT_DIR/$spectro_basename"
+    if [[ -f "$spectro_source" ]]; then
+      IO:debug "Moving spectrogram: $spectro_source -> $spectro_dest"
+      mv "$spectro_source" "$spectro_dest"
+    fi
+
+    # Move demucs output directories if they exist
+    if [[ -n "$SPLITTER" ]] && [[ "$SPLITTER" != "none" ]]; then
+      local demucs_dir="$tmp_dir/htdemucs/$output_root"
+      if [[ -d "$demucs_dir" ]]; then
+        IO:debug "Moving demucs output: $demucs_dir -> $OUT_DIR/htdemucs/"
+        mkdir -p "$OUT_DIR/htdemucs"
+        mv "$demucs_dir" "$OUT_DIR/htdemucs/"
+      fi
     fi
   fi
 
@@ -732,7 +762,7 @@ function tag_audio_file() {
     fi
   else
     artwork_file=$(Os:tempfile jpg)
-    splashmark -w 500 -c 500 -3 " " -e dark,pixel,grain -i "$title" -k "$artist" url "https://cataas.com/cat" "$artwork_file"
+    splashmark -w 500 -c 500 -3 " " -e dark,pixel,grain -i "$title" -k "$artist" url "https://cataas.com/cat?$RANDOM" "$artwork_file"
     IO:debug "Random Artwork generated successfully"
   fi
 
@@ -874,11 +904,11 @@ function cleanup_tracklist() {
     # Skip empty lines
     if (length($0) == 0) next;
 
-    # Remove numbering at the beginning (e.g., "1)", "10)")
-    gsub(/^[0-9]+\)[ \t]*/, "", $0);
+    # Remove numbering at the beginning (e.g., "1)", "1.", "10)")
+    gsub(/^[0-9]+[.)][ \t]*/, "", $0);
 
-    # Remove timestamps (e.g., "00:00", "03:28", "1:23:45")
-    gsub(/^[0-9]+:[0-9]+(:[0-9]+)?[ \t]*/, "", $0);
+    # Remove timestamps (e.g., "00:00", "03:28", "1:23:45") and optional / after
+    gsub(/^[0-9]+:[0-9]+(:[0-9]+)?[ \t]*\/?[ \t]*/, "", $0);
 
     # Remove YouTube handles (e.g., "@nofussrecords6609", "‪@nofussrecords6609‬")
     gsub(/[‪‬]*@[a-zA-Z0-9_]+[‪‬]*/, "", $0);
