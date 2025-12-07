@@ -170,6 +170,9 @@ Script:main() {
     #TIP: use «$script_prefix update» to update to the latest version
     #TIP:> $script_prefix update
     Script:git_pull
+    local BIN_DOWNLOADER
+    BIN_DOWNLOADER="$(command -v yt-dlp)"
+    [[ "$BIN_DOWNLOADER" == "/opt/homebrew/bin/yt-dlp" ]] && brew upgrade yt-dlp
     ;;
 
   *)
@@ -268,6 +271,7 @@ function download_to_file() {
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
   IO:log "$DOWNLOADER $url"
+  set -ex
   output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> "$log_media" |
     grep "Destination:" |
     tail -1 |
