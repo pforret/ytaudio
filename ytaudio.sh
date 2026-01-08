@@ -21,28 +21,6 @@ install_package=""
 temp_files=()
 
 function Option:config() {
-  ### Change the next lines to reflect which flags/options/parameters you need
-  ### flag:   switch a flag 'on' / no value specified
-  ###     flag|<short>|<long>|<description>
-  ###     e.g. "-v" or "--verbose" for verbose output / default is always 'off'
-  ###     will be available as $<long> in the script e.g. $verbose
-  ### option: set an option / 1 value specified
-  ###     option|<short>|<long>|<description>|<default>
-  ###     e.g. "-e <extension>" or "--extension <extension>" for a file extension
-  ###     will be available a $<long> in the script e.g. $extension
-  ### list: add a list/array item / 1 value specified
-  ###     list|<short>|<long>|<description>| (default is ignored)
-  ###     e.g. "-u <user1> -u <user2>" or "--user <user1> --user <user2>"
-  ###     will be available a $<long> array in the script e.g. ${user[@]}
-  ### param:  comes after the options
-  ###     param|<type>|<long>|<description>
-  ###     <type> = 1 for single parameters - e.g. param|1|output expects 1 parameter <output>
-  ###     <type> = ? for optional parameters - e.g. param|1|output expects 1 parameter <output>
-  ###     <type> = n for list parameter    - e.g. param|n|inputs expects <input1> <input2> ... <input99>
-  ###     will be available as $<long> in the script after option/param parsing
-  ### choice:  is like a param, but when there are limited options
-  ###     choice|<type>|<long>|<description>|choice1,choice2,...
-  ###     <type> = 1 for single parameters - e.g. param|1|output expects 1 parameter <output>
   grep <<<"
 #commented lines will be filtered
 flag|h|help|show usage
@@ -271,7 +249,6 @@ function download_to_file() {
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
   IO:log "$DOWNLOADER $url"
-  set -ex
   output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> "$log_media" |
     grep "Destination:" |
     tail -1 |
@@ -322,7 +299,7 @@ function download_to_file() {
     IO:log "Normalize ${output_download} (-14 LUFS)"
     local output_normalized
     output_normalized="${output_download%.*}_normalized.${FORMAT}"
-    ffmpeg -hide_banner -i "$output_download" -af "loudnorm=I=-14:LRA=11:TP=-1.5" -y "$output_normalized" 2>>"$log_media"
+    ffmpeg -hide_banner -i "$output_download" -af "loudnorm=I=-9:LRA=3:TP=-1" -y "$output_normalized" 2>>"$log_media"
     loudness_after="$(measure_volume "$output_normalized")"
     if [[ "$loudness_before" != "$loudness_after" ]]; then
       IO:debug "Loudness corrected: $loudness_before => $loudness_after"
