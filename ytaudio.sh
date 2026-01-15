@@ -249,7 +249,6 @@ function download_to_file() {
   # shellcheck disable=SC2154
   IO:debug "Download $url ... "
   IO:log "$DOWNLOADER $url"
-  set -ex
   output_download=$("$DOWNLOADER" "${yt_options[@]}" "$url" 2>> "$log_media" |
     grep "Destination:" |
     tail -1 |
