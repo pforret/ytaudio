@@ -256,6 +256,21 @@ function download_to_file() {
 
   if [[ -z "$output_download" ]] ; then
      IO:alert "No Youtube video could be downloaded"
+     # Check log for specific error reasons
+     if [[ -f "$log_media" ]] ; then
+       local error_reason
+       if grep -q "does not pass filter" "$log_media" 2>/dev/null ; then
+         error_reason=$(grep "does not pass filter" "$log_media" | tail -1)
+         IO:alert "Filter: $error_reason"
+       elif grep -q "ERROR:" "$log_media" 2>/dev/null ; then
+         error_reason=$(grep "ERROR:" "$log_media" | tail -1)
+         IO:alert "$error_reason"
+       elif grep -q "WARNING:" "$log_media" 2>/dev/null ; then
+         error_reason=$(grep "WARNING:" "$log_media" | tail -1)
+         IO:alert "$error_reason"
+       fi
+       IO:debug "Full log: $log_media"
+     fi
      echo ""
      return 1
   fi
