@@ -41,6 +41,7 @@ option|G|GENRE|force mp3 genre|
 option|O|OUT_DIR|output folder|.
 option|Q|QUALITY|audio quality|1
 option|S|SPLITTER|stem splitting (full/voice)|
+flag|K|COOKIES|use browser cookies for auth
 option|X|MAX|max duration in seconds|600
 option|Y|MIN|min duration in seconds|180
 choice|1|action|action to perform|get,search,loop,tracklist,trackfilter,parallel,check,env,update
@@ -243,6 +244,10 @@ function download_to_file() {
     --console-title
     -x
     -o "$tmp_dir/%(title)s.%(ext)s")
+  if [[ "$COOKIES" -gt 0 ]]; then
+    local cookies_file="$tmp_dir/cookies.txt"
+    yt_options+=(--cookies-from-browser chrome --cookies "$cookies_file")
+  fi
 
   IO:progress "Downloading $url          "
   local final_output=""
