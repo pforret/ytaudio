@@ -245,8 +245,7 @@ function download_to_file() {
     -x
     -o "$tmp_dir/%(title)s.%(ext)s")
   if [[ "$COOKIES" -gt 0 ]]; then
-    local cookies_file="$tmp_dir/cookies.txt"
-    yt_options+=(--cookies-from-browser chrome --cookies "$cookies_file")
+    yt_options+=(--cookies-from-browser chrome)
   fi
 
   IO:progress "Downloading $url          "
