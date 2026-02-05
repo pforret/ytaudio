@@ -192,23 +192,17 @@ function search_in_youtube() {
   IO:debug "Search YouTube for: $query"
   IO:log "SEARCH: $query"
 
+  local yt_opts=(--no-warnings --no-playlist --default-search "ytsearch" --print "%(webpage_url)s")
+  [[ "$COOKIES" -gt 0 ]] && yt_opts+=(--cookies-from-browser chrome)
+
   # Primary attempt: ytsearch1 (best match)
   # We print the webpage URL; --no-playlist to avoid channel/playlist URLs
-  url=$("$DOWNLOADER" \
-    --no-warnings \
-    --no-playlist \
-    --default-search "ytsearch" \
-    --print "%(webpage_url)s" \
-    "ytsearch1:$query" 2>>"$log_media" | head -n1 | tr -d '\r')
+  url=$("$DOWNLOADER" "${yt_opts[@]}" "ytsearch1:$query" 2>>"$log_media" | head -n1 | tr -d '\r')
 
   # Fallback: try top results and pick the first valid URL
   if [[ -z "$url" ]]; then
-    url=$("$DOWNLOADER" \
-      --no-warnings \
-      --no-playlist \
-      --default-search "ytsearch" \
-      --print "%(webpage_url)s" \
-      "ytsearch5:$query" 2>>"$log_media" | grep -E '^https?://[^ ]+' | head -n1 | tr -d '\r')
+    IO:debug "'$DOWNLOADER' ${yt_opts[*]} 'ytsearch5:$query'"
+    url=$("$DOWNLOADER" "${yt_opts[@]}" "ytsearch5:$query" 2>>"$log_media" | grep -E '^https?://[^ ]+' | head -n1 | tr -d '\r')
   fi
 
   if [[ -z "$url" ]]; then
